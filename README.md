@@ -1,6 +1,7 @@
-# Resume Formatter
+# Lebenslauf
 
-A minimal CLI app that turns a YAML resume into a print-ready A4 PDF using a user-supplied Jinja HTML fragment, a system print template, and a Chromium-based browser.
+Lebenslauf means CV in German. A CLI app that turns a YAML resume into a
+print-ready A4 PDF.
 
 ## Install
 
@@ -10,31 +11,32 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-The app uses Selenium Manager, so a separate driver install is usually not needed. You do need a Chromium-based browser installed.
+The app uses Selenium Manager, so a separate driver install is usually not
+needed. You do need a Chromium-based browser installed.
 
 ## Usage
 
 ```bash
-python -m resume_formatter example_resume.yaml template.html -o resume.pdf
+python -m lebenslauf example_resume.yaml template.html -o resume.pdf
 ```
 
 You can pass a browser executable explicitly:
 
 ```bash
-python -m resume_formatter example_resume.yaml template.html -o resume.pdf --browser /usr/bin/brave-browser
+python -m lebenslauf example_resume.yaml template.html -o resume.pdf --browser /usr/bin/brave-browser
 ```
 
 If `--browser` is omitted, the app searches for Chromium, Brave, then Chrome. It exits with an error if none is found.
 
 ```bash
 # Show help
-python -m resume_formatter --help
+python -m lebenslauf --help
 
 # Save the processed HTML into rendered.html
-python -m resume_formatter example/resume.yaml example/template.html --keep-html rendered.html
+python -m lebenslauf example/resume.yaml example/template.html --keep-html rendered.html
 
 # Open the browser window
-python -m resume_formatter example/resume.yaml example/template.html --show-browser
+python -m lebenslauf example/resume.yaml example/template.html --show-browser
 ```
 
 ## YAML Format
@@ -88,4 +90,4 @@ The user template must be an HTML fragment, not a full document. Do not include 
 
 Sections that should paginate cleanly should use `class="section"` and `data-section`. Repeated entries inside a section should use `class="item"` so the system paginator can split long sections between pages.
 
-The included `template.html` is a user template example. The system template lives in `resume_formatter/system_template.html`; normal users do not need to pass it on the command line.
+The included `template.html` is a user template example. The system template lives in `lebenslauf/system_template.html`; normal users do not need to pass it on the command line.

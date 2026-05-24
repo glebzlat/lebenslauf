@@ -14,7 +14,7 @@ import jinja2
 import pydantic
 import yaml
 
-import resume_formatter.models as models
+import lebenslauf.models as models
 
 from selenium.webdriver import Chrome
 from selenium.common.exceptions import TimeoutException, WebDriverException
@@ -180,7 +180,7 @@ def render_html(template_path: Path, data: dict[str, Any]) -> str:
     user_template = env.get_template(template_path.name)
     user_html = user_template.render(**data, resume=data)
 
-    system_template_path = Path(__file__).with_name("system_template.html")
+    system_template_path = Path(__file__).with_name("template.html")
     env = create_jinja_env(system_template_path.parent)
     system_template = env.get_template(system_template_path.name)
 

@@ -3,7 +3,7 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "resume-formatter"
+name = "lebenslauf"
 version = "0.1.0"
 description = "A simple CLI app for turning YAML formatted CVs into well-formatted PDFs."
 readme = "README.md"
@@ -16,10 +16,10 @@ dependencies = [
 ]
 
 [project.scripts]
-resume-formatter = "resume_formatter.cli:main"
+lebenslauf = "lebenslauf.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["resume_formatter*"]
+include = ["lebenslauf*"]
 
 [tool.setuptools.package-data]
-resume_formatter = ["system_template.html"]
+lebenslauf = ["template.html"]
