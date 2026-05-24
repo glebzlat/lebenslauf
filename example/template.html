@@ -1,0 +1,75 @@
+{% if experience %}
+<section class="section" data-section>
+  <h2>Experience</h2>
+  {% for item in experience %}
+  <div class="item">
+    <div class="item-head">
+      <div>
+        <p class="item-title">{{ item.role }}</p>
+        <p class="item-subtitle">{{ item.company }}</p>
+      </div>
+      <p class="item-date">{{ item.duration.start }} - {{ item.duration.end }}</p>
+    </div>
+    <ul>
+      {% for responsibility in item.responsibilities %}
+      <li>{{ responsibility }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if skills %}
+<section class="section" data-section>
+  <h2>Skills</h2>
+  <div class="skill-list">
+    {% for skill in skills %}
+    <span>{{ skill }}</span>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if certificates %}
+<section class="section" data-section>
+  <h2>Certificates</h2>
+  {% for item in certificates %}
+  <div class="item">
+    <p class="item-title">{{ item.name }}</p>
+    <p class="item-subtitle">{{ item.issuer }}</p>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if languages %}
+<section class="section" data-section>
+  <h2>Languages</h2>
+  {% for item in languages %}
+  <div class="item">
+    <div class="item-head">
+      <p class="item-title">{{ item.name }}</p>
+      <p class="item-date">{{ item.level }}</p>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if education %}
+<section class="section" data-section>
+  <h2>Education</h2>
+  {% for item in education %}
+  <div class="item">
+    <div class="item-head">
+      <div>
+        <p class="item-title">{{ item.academy }}</p>
+        <p class="item-subtitle">{{ item.specialization.type }}: {{ item.specialization.name }}</p>
+      </div>
+      <p class="item-date">{{ item.duration.start }} - {{ item.duration.end }}</p>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}

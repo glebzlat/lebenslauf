@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ person.name }} - CV</title>
+<style>
+  *, *:after, *:before {
+    box-sizing: border-box;
+  }
+
+  :root {
+    --page-width: 210mm;
+    --page-height: 297mm;
+    --page-margin: 12mm;
+    --border-color: #d8d8d8;
+    --muted: #555;
+    --text: #151515;
+    --content-gap: 5mm;
+    --section-gap: 4.2mm;
+    --item-gap: 2.8mm;
+  }
+
+  body {
+    margin: 0;
+    padding: 18px 0;
+    background: #dedede;
+    color: var(--text);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 10.2pt;
+    line-height: 1.34;
+  }
+
+  h1, h2, h3, p {
+    margin: 0;
+  }
+
+  ul {
+    margin: 1.2mm 0 0;
+    padding-left: 5mm;
+  }
+
+  li + li {
+    margin-top: .8mm;
+  }
+
+  .pages {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .page {
+    width: var(--page-width);
+    height: var(--page-height);
+    padding: var(--page-margin);
+    background: white;
+    box-shadow: 0 0 8px rgba(0,0,0,.15);
+    overflow: hidden;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  .content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--content-gap);
+  }
+
+  .header {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 3mm;
+  }
+
+  .header h1 {
+    font-size: 24pt;
+    line-height: 1;
+    font-weight: 600;
+  }
+
+  .role {
+    margin-top: 1.4mm;
+    color: var(--muted);
+    font-size: 12pt;
+  }
+
+  .contacts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1mm 4mm;
+    margin-top: 3mm;
+    color: var(--muted);
+    font-size: 9.2pt;
+  }
+
+  .section {
+    break-inside: avoid;
+  }
+
+  .section + .section {
+    margin-top: var(--section-gap);
+  }
+
+  .section h2 {
+    padding-bottom: 1mm;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 9.8pt;
+    line-height: 1.15;
+    text-transform: uppercase;
+    letter-spacing: 0;
+  }
+
+  .item {
+    margin-top: var(--item-gap);
+    break-inside: avoid;
+  }
+
+  .item-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 5mm;
+  }
+
+  .item-title {
+    font-weight: 700;
+  }
+
+  .item-subtitle,
+  .item-date,
+  .skill-list {
+    color: var(--muted);
+  }
+
+  .item-date {
+    flex: 0 0 auto;
+    text-align: right;
+  }
+
+  .skill-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.2mm 4mm;
+    margin-top: 2.4mm;
+  }
+
+  body.compact {
+    --page-margin: 9mm;
+    --content-gap: 3mm;
+    --section-gap: 2.4mm;
+    --item-gap: 1.8mm;
+    font-size: 9.5pt;
+    line-height: 1.24;
+  }
+
+  body.compact .header {
+    padding-bottom: 2mm;
+  }
+
+  body.compact .header h1 {
+    font-size: 21pt;
+  }
+
+  body.compact .role {
+    margin-top: .8mm;
+  }
+
+  body.compact .contacts {
+    margin-top: 1.8mm;
+  }
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  @media print {
+    body {
+      background: white;
+      padding: 0;
+    }
+
+    .pages {
+      gap: 0;
+    }
+
+    .page {
+      box-shadow: none;
+      margin: 0;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="pages" id="pages">
+  <article class="page">
+    <div class="content">
+      <header class="header" data-repeat="header">
+        <h1>{{ person.name }}</h1>
+        <p class="role">{{ person.role }}</p>
+        <div class="contacts">
+          {% for label, value in person.contacts.items() if value %}
+            <span>{{ value }}</span>
+          {% endfor %}
+        </div>
+      </header>
+
+      <main id="source">
+        {{ content | safe }}
+      </main>
+    </div>
+  </article>
+</div>
+<script>
+  window.resumeFormatterReady = false;
+  window.resumeFormatterSource = null;
+
+  function pageOverflow(page) {
+    const content = page.querySelector(".content");
+    return content.scrollHeight > content.clientHeight + 1;
+  }
+
+  function createPage() {
+    const page = document.createElement("article");
+    page.className = "page";
+    const content = document.createElement("div");
+    content.className = "content";
+    page.appendChild(content);
+    document.getElementById("pages").appendChild(page);
+    return page;
+  }
+
+  function sectionParts(section) {
+    const children = Array.from(section.children);
+    const heading = children.shift();
+    const parts = [];
+    let current = null;
+
+    children.forEach((child) => {
+      if (child.classList.contains("item")) {
+        current = section.cloneNode(false);
+        current.appendChild(heading.cloneNode(true));
+        current.appendChild(child.cloneNode(true));
+        parts.push(current);
+      } else {
+        if (!current) {
+          current = section.cloneNode(false);
+          current.appendChild(heading.cloneNode(true));
+          parts.push(current);
+        }
+        current.appendChild(child.cloneNode(true));
+      }
+    });
+
+    return parts.length ? parts : [section.cloneNode(true)];
+  }
+
+  function paginate() {
+    const pages = document.getElementById("pages");
+    const header = window.resumeFormatterSource.header.cloneNode(true);
+    const fragments = window.resumeFormatterSource.fragments.map(fragment => fragment.cloneNode(true));
+
+    pages.innerHTML = "";
+    let page = createPage();
+    let content = page.querySelector(".content");
+    content.appendChild(header);
+
+    fragments.forEach((fragment) => {
+      content.appendChild(fragment);
+      if (pageOverflow(page)) {
+        fragment.remove();
+        page = createPage();
+        content = page.querySelector(".content");
+        content.appendChild(fragment);
+      }
+    });
+  }
+
+  window.resumeFormatterLayout = function() {
+    if (window.resumeFormatterReady) {
+      return;
+    }
+
+    if (!window.resumeFormatterSource) {
+      const firstPage = document.querySelector(".page");
+      const source = document.getElementById("source");
+      const sections = Array.from(source.querySelectorAll("[data-section]"));
+      window.resumeFormatterSource = {
+        header: firstPage.querySelector("[data-repeat='header']").cloneNode(true),
+        fragments: sections.flatMap(sectionParts)
+      };
+    }
+
+    paginate();
+    if (document.querySelectorAll(".page").length === 1) {
+      window.resumeFormatterReady = true;
+      return;
+    }
+
+    document.body.classList.add("compact");
+    paginate();
+    window.resumeFormatterReady = true;
+  };
+
+  window.addEventListener("load", window.resumeFormatterLayout);
+</script>
+</body>
+</html>

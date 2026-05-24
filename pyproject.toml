@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "resume-formatter"
+version = "0.1.0"
+description = "A simple CLI app for turning YAML formatted CVs into well-formatted PDFs."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "jinja2>=3.1",
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+    "selenium>=4.20",
+]
+
+[project.scripts]
+resume-formatter = "resume_formatter.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["resume_formatter*"]
+
+[tool.setuptools.package-data]
+resume_formatter = ["system_template.html"]

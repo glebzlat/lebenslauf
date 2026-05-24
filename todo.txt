@@ -1,0 +1,1 @@
+Bug: JS code duplicates Language section

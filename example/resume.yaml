@@ -1,0 +1,37 @@
+person:
+  name: "John Doe"
+  role: "Software Developer"
+  contacts:
+    phone: "+7 777 888 2233"
+    github: "https://github.com/johndoe"
+experience:
+  - company: "Great Company Inc."
+    role: "QA Engineer"
+    duration:
+      start: "11 Aug 2024"
+      end: "20 Sep 2025"
+    responsibilities:
+      - "Participated in manual testing of embedded software"
+      - "Improved regression testing workflow"
+skills:
+  - "PostgreSQL"
+  - "Linux"
+  - "Bash"
+  - "Postman"
+  - "Python"
+certificates:
+  - name: "Really Great Python Course"
+    issuer: "Super Skill Academy"
+languages:
+  - name: "German"
+    level: "B2"
+  - name: "English"
+    level: "native"
+education:
+  - academy: "Vulcan Technical University"
+    specialization:
+      type: "Specialization"
+      name: "Mechanical Engineering"
+    duration:
+      start: "1 Sep 2020"
+      end: "30 Oct 2024"
