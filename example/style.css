@@ -1,0 +1,108 @@
+.ll-body {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 10.2pt;
+  line-height: 1.14;
+}
+
+.header {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 3mm;
+}
+
+.header h1 {
+  font-size: 24pt;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.role {
+  margin-top: 1.4mm;
+  color: var(--muted);
+  font-size: 12pt;
+}
+
+.contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1mm 4mm;
+  margin-top: 3mm;
+  color: var(--muted);
+  font-size: 9.2pt;
+}
+
+.section {
+  break-inside: avoid;
+}
+
+.section + .section {
+  margin-top: var(--section-gap);
+}
+
+.section h2 {
+  padding-bottom: 1mm;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 9.8pt;
+  line-height: 1.15;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.item {
+  margin-top: var(--item-gap);
+  break-inside: avoid;
+}
+
+.item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 5mm;
+}
+
+.item-title {
+  font-weight: 700;
+}
+
+.item-subtitle,
+.item-date,
+.skill-list {
+  color: var(--muted);
+}
+
+.item-date {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2mm 4mm;
+  margin-top: 2.4mm;
+}
+
+/*
+body.compact {
+  --page-margin: 9mm;
+  --content-gap: 3mm;
+  --section-gap: 2.4mm;
+  --item-gap: 1.8mm;
+  font-size: 9.5pt;
+  line-height: 1.24;
+}
+
+body.compact .header {
+  padding-bottom: 2mm;
+}
+
+body.compact .header h1 {
+  font-size: 21pt;
+}
+
+body.compact .role {
+  margin-top: .8mm;
+}
+
+body.compact .contacts {
+  margin-top: 1.8mm;
+}
+*/

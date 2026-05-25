@@ -1,5 +1,15 @@
+<header class="header" ll-header>
+  <h1>{{ person.name }}</h1>
+  <p class="role">{{ person.role }}</p>
+  <div class="contacts">
+    {% for label, value in person.contacts.items() if value %}
+      <span>{{ value }}</span>
+    {% endfor %}
+  </div>
+</header>
+
 {% if experience %}
-<section class="section" data-section>
+<section class="section" ll-section>
   <h2>Experience</h2>
   {% for item in experience %}
   <div class="item">
@@ -21,7 +31,7 @@
 {% endif %}
 
 {% if skills %}
-<section class="section" data-section>
+<section class="section" ll-section>
   <h2>Skills</h2>
   <div class="skill-list">
     {% for skill in skills %}
@@ -32,7 +42,7 @@
 {% endif %}
 
 {% if certificates %}
-<section class="section" data-section>
+<section class="section" ll-section>
   <h2>Certificates</h2>
   {% for item in certificates %}
   <div class="item">
@@ -44,7 +54,7 @@
 {% endif %}
 
 {% if languages %}
-<section class="section" data-section>
+<section class="section" ll-section>
   <h2>Languages</h2>
   {% for item in languages %}
   <div class="item">
@@ -58,7 +68,7 @@
 {% endif %}
 
 {% if education %}
-<section class="section" data-section>
+<section class="section" ll-section>
   <h2>Education</h2>
   {% for item in education %}
   <div class="item">

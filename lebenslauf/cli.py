@@ -120,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
             process_template(
                 cv=args.cv_file,
                 template=args.template_file,
+                style=args.style_file,
                 file=file
             )
             driver = init_driver(args.browser, args.repl)
@@ -129,6 +130,7 @@ def main(argv: list[str] | None = None) -> int:
                 repl(
                     args.cv_file,
                     args.template_file,
+                    args.style_file,
                     driver,
                     file,
                     args.timeout
@@ -161,6 +163,11 @@ def build_parser() -> argparse.ArgumentParser:
         "template_file",
         type=Path,
         help="User-supplied Jinja HTML fragment."
+    )
+    parser.add_argument(
+        "style_file",
+        type=Path,
+        help="CSS styles for user-supplied Jinja HTML fragment."
     )
     parser.add_argument(
         "-o",
@@ -212,9 +219,11 @@ def init_file(keep_html: Optional[Path]) -> TextIO:
     return tempfile.TemporaryFile("w+", encoding="utf-8")
 
 
-def process_template(cv: Path, template: Path, file: File):
+def process_template(cv: Path, template: Path, style: Path, file: File):
     data = load_resume(cv)
-    html = render_html(template, data)
+    with open(style, "r", encoding="utf-8") as fin:
+        css = fin.read()
+    html = render_html(template, css, data)
     file.write(html)
 
 
@@ -249,7 +258,7 @@ def format_errors(exc: Any) -> str:
     return "\n".join(lines)
 
 
-def render_html(template_path: Path, data: dict[str, Any]) -> str:
+def render_html(template_path: Path, style: str, data: dict[str, Any]) -> str:
     if not template_path.exists():
         raise ResumeError(f"template file does not exist: {template_path}")
 
@@ -261,7 +270,12 @@ def render_html(template_path: Path, data: dict[str, Any]) -> str:
     env = create_jinja_env(system_template_path.parent)
     system_template = env.get_template(system_template_path.name)
 
-    return system_template.render(**data, resume=data, content=user_html)
+    return system_template.render(
+        **data,
+        resume=data,
+        style=style,
+        content=user_html
+    )
 
 
 def create_jinja_env(template: Path) -> jinja2.Environment:
@@ -282,13 +296,15 @@ def render_page(driver: Chrome, file: File, timeout: float):
 def repl(
     cv_path: Path,
     template_path: Path,
+    style_path: Path,
     driver: Chrome,
     file: File,
     timeout: float
 ):
     mtimes: dict[Path, int] = {
         cv_path: 0,
-        template_path: 0
+        template_path: 0,
+        style_path: 0
     }
 
     if not sys.stdin.isatty():
@@ -305,7 +321,7 @@ def repl(
                 if mtime != 0:
                     print(f"File changed: {path}")
                 try:
-                    process_template(cv_path, template_path, file)
+                    process_template(cv_path, template_path, style_path, file)
                     driver.refresh()
                 except Exception as exc:
                     print(exc, file=sys.stderr)
