@@ -27,6 +27,10 @@
     color: var(--text);
   }
 
+  [hidden] {
+    display: none !important;
+  }
+
   h1, h2, h3, p {
     margin: 0;
   }
@@ -95,14 +99,10 @@
 </style>
 </head>
 <body class="ll-body">
+<main id="source" hidden>
+  {{ content | safe }}
+</main>
 <div class="pages" id="pages">
-  <article class="page">
-    <div class="content">
-      <main id="source">
-        {{ content | safe }}
-      </main>
-    </div>
-  </article>
 </div>
 <script>
   window.resumeFormatterReady = false;
@@ -123,49 +123,152 @@
     return page;
   }
 
-  function sectionParts(section) {
-    const children = Array.from(section.children);
-    const heading = children.shift();
-    const parts = [];
-    let current = null;
+  function annotateSectionTree(section) {
+    section.setAttribute("data-ll-path", "root");
+    section.setAttribute("data-ll-index", "-1");
 
-    children.forEach((child) => {
-      if (child.classList.contains("item")) {
-        current = section.cloneNode(false);
-        current.appendChild(heading.cloneNode(true));
-        current.appendChild(child.cloneNode(true));
-        parts.push(current);
-      } else {
-        if (!current) {
-          current = section.cloneNode(false);
-          current.appendChild(heading.cloneNode(true));
-          parts.push(current);
+    function visit(node) {
+      Array.from(node.children).forEach((child, index) => {
+        const parentPath = node.getAttribute("data-ll-path");
+        child.setAttribute("data-ll-path", `${parentPath}.${index}`);
+        child.setAttribute("data-ll-index", String(index));
+        visit(child);
+      });
+    }
+
+    visit(section);
+  }
+
+  function cleanupSectionTree(node) {
+    node.removeAttribute("data-ll-path");
+    node.removeAttribute("data-ll-index");
+    Array.from(node.children).forEach(cleanupSectionTree);
+  }
+
+  function isSplitItem(node) {
+    return node.classList.contains("item") && !node.querySelector(".item");
+  }
+
+  function hasSplitItems(node) {
+    return Array.from(node.children).some((child) => isSplitItem(child) || hasSplitItems(child));
+  }
+
+  function cloneSectionFragment(node, selectedItemPaths, includeStaticContent) {
+    if (isSplitItem(node)) {
+      return selectedItemPaths.has(node.getAttribute("data-ll-path")) ? node.cloneNode(true) : null;
+    }
+
+    const clone = node.cloneNode(false);
+
+    Array.from(node.children).forEach((child) => {
+      if (isSplitItem(child)) {
+        if (selectedItemPaths.has(child.getAttribute("data-ll-path"))) {
+          clone.appendChild(child.cloneNode(true));
         }
-        current.appendChild(child.cloneNode(true));
+        return;
+      }
+
+      if (hasSplitItems(child)) {
+        const childClone = cloneSectionFragment(child, selectedItemPaths, includeStaticContent);
+        if (childClone && childClone.children.length) {
+          clone.appendChild(childClone);
+        }
+        return;
+      }
+
+      if (includeStaticContent) {
+        clone.appendChild(child.cloneNode(true));
       }
     });
 
-    return parts.length ? parts : [section.cloneNode(true)];
+    return clone;
+  }
+
+  function splitItems(section) {
+    return Array.from(section.querySelectorAll(".item")).filter(isSplitItem);
+  }
+
+  function buildSectionPart(section, items, includeStaticContent) {
+    const selectedItemPaths = new Set(items.map((item) => item.getAttribute("data-ll-path")));
+    const part = cloneSectionFragment(section, selectedItemPaths, includeStaticContent);
+    cleanupSectionTree(part);
+    return part;
+  }
+
+  function appendSection(section, page, content) {
+    const wholeSection = section.cloneNode(true);
+    cleanupSectionTree(wholeSection);
+    content.appendChild(wholeSection);
+
+    if (!pageOverflow(page)) {
+      return { page, content };
+    }
+
+    wholeSection.remove();
+    const items = splitItems(section);
+
+    if (!items.length) {
+      page = createPage();
+      content = page.querySelector(".content");
+      content.appendChild(wholeSection);
+      return { page, content };
+    }
+
+    let index = 0;
+    while (index < items.length) {
+      let fittedCount = 0;
+
+      for (let end = index; end < items.length; end += 1) {
+        const candidate = buildSectionPart(section, items.slice(index, end + 1), index === 0);
+        content.appendChild(candidate);
+
+        if (pageOverflow(page)) {
+          candidate.remove();
+          break;
+        }
+
+        candidate.remove();
+        fittedCount = end - index + 1;
+      }
+
+      if (fittedCount === 0) {
+        const emptyPage = content.children.length === 0;
+        if (!emptyPage) {
+          page = createPage();
+          content = page.querySelector(".content");
+          continue;
+        }
+
+        const forcedPart = buildSectionPart(section, [items[index]], index === 0);
+        content.appendChild(forcedPart);
+        index += 1;
+      } else {
+        const finalPart = buildSectionPart(section, items.slice(index, index + fittedCount), index === 0);
+        content.appendChild(finalPart);
+        index += fittedCount;
+      }
+
+      if (index < items.length) {
+        page = createPage();
+        content = page.querySelector(".content");
+      }
+    }
+
+    return { page, content };
   }
 
   function paginate() {
     const pages = document.getElementById("pages");
     const header = window.resumeFormatterSource.header.cloneNode(true);
-    const fragments = window.resumeFormatterSource.fragments.map(fragment => fragment.cloneNode(true));
+    const sections = window.resumeFormatterSource.sections;
 
     pages.innerHTML = "";
     let page = createPage();
     let content = page.querySelector(".content");
     content.appendChild(header);
 
-    fragments.forEach((fragment) => {
-      content.appendChild(fragment);
-      if (pageOverflow(page)) {
-        fragment.remove();
-        page = createPage();
-        content = page.querySelector(".content");
-        content.appendChild(fragment);
-      }
+    sections.forEach((section) => {
+      ({ page, content } = appendSection(section, page, content));
     });
   }
 
@@ -175,15 +278,19 @@
     }
 
     if (!window.resumeFormatterSource) {
-      const firstPage = document.querySelector(".page");
       const source = document.getElementById("source");
-      const sections = Array.from(source.querySelectorAll("[ll-section]"));
+      const sections = Array.from(source.querySelectorAll("[ll-section]")).map((section) => {
+        const clone = section.cloneNode(true);
+        annotateSectionTree(clone);
+        return clone;
+      });
       window.resumeFormatterSource = {
-        header: firstPage.querySelector("[ll-header]").cloneNode(true),
-        fragments: sections.flatMap(sectionParts)
+        header: source.querySelector("[ll-header]").cloneNode(true),
+        sections
       };
     }
 
+    document.body.classList.remove("compact");
     paginate();
     if (document.querySelectorAll(".page").length === 1) {
       window.resumeFormatterReady = true;

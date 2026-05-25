@@ -84,8 +84,10 @@ class File:
 
     def write(self, text: str) -> None:
         self.file.seek(0)
+        self.file.truncate()
         self.file.write(text)
         self.file.flush()
+        os.fsync(self.file.fileno())
 
     def read(self) -> str:
         self.file.seek(0)
