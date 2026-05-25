@@ -4,24 +4,26 @@ import argparse
 import base64
 import shutil
 import sys
+import os
 import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import ClassVar, Any, Optional, TextIO
+from select import select
 
 import jinja2
 import pydantic
 import yaml
 
-import lebenslauf.models as models
-
 from selenium.webdriver import Chrome
-from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.print_page_options import PrintOptions
 from selenium.common.exceptions import JavascriptException
 from selenium.webdriver.support.ui import WebDriverWait
+
+from lebenslauf import models
 
 
 class ResumeError(Exception):
@@ -30,15 +32,83 @@ class ResumeError(Exception):
 
 @dataclass(frozen=True)
 class Browser:
+
+    DETECTED_BROWSERS: ClassVar[tuple[tuple[str, tuple[str, ...]], ...]] = {
+        "Chromium": ("chromium", "chromium-browser"),
+        "Brave": ("brave-browser", "brave", "com.brave.Browser"),
+        "Chrome": ("google-chrome", "google-chrome-stable", "chrome")
+    }
+
     label: str
     binary: str
 
+    @staticmethod
+    def resolve(browser_arg: str | None) -> Browser:
+        if browser_arg:
+            browser_path = Path(browser_arg).expanduser()
+            if browser_path.exists():
+                return Browser(
+                    label=browser_path.name,
+                    binary=str(browser_path)
+                )
 
-DETECTED_BROWSERS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("Chromium", ("chromium", "chromium-browser")),
-    ("Brave", ("brave-browser", "brave", "com.brave.Browser")),
-    ("Chrome", ("google-chrome", "google-chrome-stable", "chrome")),
-)
+            found = shutil.which(browser_arg)
+            if found:
+                return Browser(label=browser_arg, binary=found)
+
+            raise ResumeError(
+                f"browser was specified but not found: {browser_arg}"
+            )
+
+        for label, commands in Browser.DETECTED_BROWSERS.items():
+            for command in commands:
+                found = shutil.which(command)
+                if found:
+                    return Browser(label=label, binary=found)
+
+        names = ", ".join(
+            label for label, _ in Browser.DETECTED_BROWSERS.items()
+        )
+        raise ResumeError(
+            f"no browser detected. Install one of: {names}; or pass --browser."
+        )
+
+
+class File:
+
+    def __init__(self, keep_html: Optional[Path] = None):
+        self.keep_html = keep_html
+        self.file_path = None
+        self.file = None
+        self.tmpdir = None
+
+    def write(self, text: str) -> None:
+        self.file.seek(0)
+        self.file.write(text)
+        self.file.flush()
+
+    def read(self) -> str:
+        self.file.seek(0)
+        return self.file.read()
+
+    @property
+    def path(self) -> Path:
+        return self.file_path
+
+    def __enter__(self):
+        if self.keep_html:
+            self.file_path = self.keep_html
+        else:
+            self.tmpdir = tempfile.TemporaryDirectory(prefix="lebenslauf-")
+            self.file_path = Path(self.tmpdir.name) / "index.html"
+
+        self.file = open(self.file_path, "w+", encoding="utf-8")
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.file.close()
+        if self.tmpdir:
+            self.tmpdir.cleanup()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -46,17 +116,31 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        render_pdf(
-            yaml_path=args.yaml_file,
-            template_path=args.template_file,
-            output_path=args.output,
-            browser_arg=args.browser,
-            keep_html=args.keep_html,
-            show_browser=args.show_browser,
-            timeout=args.timeout,
-        )
+        with File(args.keep_html) as file:
+            process_template(
+                cv=args.cv_file,
+                template=args.template_file,
+                file=file
+            )
+            driver = init_driver(args.browser, args.repl)
+            render_page(driver, file, args.timeout)
+
+            if args.repl:
+                repl(
+                    args.cv_file,
+                    args.template_file,
+                    driver,
+                    file,
+                    args.timeout
+                )
+
+        pdf_bytes = print_html(driver)
+        args.output.write_bytes(pdf_bytes)
+
     except ResumeError as exc:
-        print(exc, file=sys.stderr)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(f"{fname}:{exc_tb.tb_lineno}: {exc}", file=sys.stderr)
         return 1
 
     return 0
@@ -69,7 +153,7 @@ def build_parser() -> argparse.ArgumentParser:
                     "print it to PDF.",
     )
     parser.add_argument(
-        "yaml_file",
+        "cv_file",
         type=Path,
         help="YAML resume description."
     )
@@ -96,9 +180,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Write the rendered intermediate HTML to this path.",
     )
     parser.add_argument(
-        "--show-browser",
+        "-r",
+        "--repl",
         action="store_true",
-        help="Run the browser visibly instead of headless.",
+        help="Enter interactive mode."
     )
     parser.add_argument(
         "--timeout",
@@ -109,36 +194,28 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def render_pdf(
-    yaml_path: Path,
-    template_path: Path,
-    output_path: Path,
-    browser_arg: str | None,
-    keep_html: Path | None,
-    show_browser: bool,
-    timeout: float,
-) -> None:
-    data = load_resume(yaml_path)
-    html = render_html(template_path, data)
-    browser = resolve_browser(browser_arg)
+def init_driver(browser_arg: str, repl: bool) -> Chrome:
+    browser = Browser.resolve(browser_arg)
+    options = Options()
+    options.binary_location = browser.binary
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--no-sandbox")
+    if not repl:
+        options.add_argument("--headless=new")
+    return Chrome(options=options)
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    if keep_html is not None:
-        keep_html.parent.mkdir(parents=True, exist_ok=True)
-        keep_html.write_text(html, encoding="utf-8")
-        html_path = keep_html
-        cleanup_dir = None
-    else:
-        cleanup_dir = tempfile.TemporaryDirectory(prefix="resume-formatter-")
-        html_path = Path(cleanup_dir.name) / "resume.html"
-        html_path.write_text(html, encoding="utf-8")
 
-    try:
-        pdf_bytes = print_html(html_path, browser, show_browser, timeout)
-        output_path.write_bytes(pdf_bytes)
-    finally:
-        if cleanup_dir is not None:
-            cleanup_dir.cleanup()
+def init_file(keep_html: Optional[Path]) -> TextIO:
+    if keep_html:
+        return open(keep_html, "w+", encoding="utf-8")
+    return tempfile.TemporaryFile("w+", encoding="utf-8")
+
+
+def process_template(cv: Path, template: Path, file: File):
+    data = load_resume(cv)
+    html = render_html(template, data)
+    file.write(html)
 
 
 def load_resume(path: Path) -> dict[str, Any]:
@@ -197,52 +274,53 @@ def create_jinja_env(template: Path) -> jinja2.Environment:
     )
 
 
-def resolve_browser(browser_arg: str | None) -> Browser:
-    if browser_arg:
-        browser_path = Path(browser_arg).expanduser()
-        if browser_path.exists():
-            return Browser(label=browser_path.name, binary=str(browser_path))
+def render_page(driver: Chrome, file: File, timeout: float):
+    driver.get(file.path.resolve().as_uri())
+    wait_for_layout(driver, timeout)
 
-        found = shutil.which(browser_arg)
-        if found:
-            return Browser(label=browser_arg, binary=found)
 
-        raise ResumeError(f"browser was specified but not found: {browser_arg}")
+def repl(
+    cv_path: Path,
+    template_path: Path,
+    driver: Chrome,
+    file: File,
+    timeout: float
+):
+    mtimes: dict[Path, int] = {
+        cv_path: 0,
+        template_path: 0
+    }
 
-    for label, commands in DETECTED_BROWSERS:
-        for command in commands:
-            found = shutil.which(command)
-            if found:
-                return Browser(label=label, binary=found)
+    if not sys.stdin.isatty():
+        raise ResumeError("stdin must be an interactive terminal")
 
-    names = ", ".join(label for label, _ in DETECTED_BROWSERS)
-    raise ResumeError(
-        f"no browser detected. Install one of: {names}; or pass --browser."
-    )
+    print("Enter anything to exit REPL")
+    while True:
+        for path, mtime in mtimes.items():
+            if not path.exists():
+                raise ResumeError(f"file {path} does not exist")
+
+            stat = os.stat(path)
+            if stat.st_mtime > mtime:
+                if mtime != 0:
+                    print(f"File changed: {path}")
+                try:
+                    process_template(cv_path, template_path, file)
+                    driver.refresh()
+                except Exception as exc:
+                    print(exc, file=sys.stderr)
+            mtimes[path] = stat.st_mtime
+
+        ready = select([sys.stdin], [], [], 0.5)
+        if ready[0]:
+            sys.stdin.readline()
+            break
 
 
 def print_html(
-    path: Path,
-    browser: Browser,
-    show_browser: bool,
-    timeout: float
+    driver: Chrome,
 ) -> bytes:
-    options = Options()
-    options.binary_location = browser.binary
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--no-sandbox")
-    if not show_browser:
-        options.add_argument("--headless=new")
-
-    driver = None
     try:
-        driver = Chrome(options=options)
-        driver.get(path.resolve().as_uri())
-        wait_for_layout(driver, timeout)
-        if show_browser:
-            input("enter any key to continue")
-
         print_options = PrintOptions()
         print_options.orientation = "portrait"
         print_options.page_width = 21.0
@@ -255,17 +333,8 @@ def print_html(
 
         encoded_pdf = driver.print_page(print_options)
         return base64.b64decode(encoded_pdf)
-    except TimeoutException as exc:
-        raise ResumeError(
-            "browser layout timed out before the page was ready."
-        ) from exc
     except WebDriverException as exc:
-        raise ResumeError(
-            f"browser print failed using {browser.label}: {exc.msg}"
-        ) from exc
-    finally:
-        if driver is not None:
-            driver.quit()
+        raise ResumeError(f"browser print failed: {exc.msg}") from exc
 
 
 def wait_for_layout(driver: Any, timeout: float) -> None:
