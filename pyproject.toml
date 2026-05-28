@@ -22,4 +22,4 @@ lebenslauf = "lebenslauf.cli:main"
 include = ["lebenslauf*"]
 
 [tool.setuptools.package-data]
-lebenslauf = ["template.html"]
+lebenslauf = ["resources/**/*"]

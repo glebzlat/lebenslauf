@@ -7,6 +7,7 @@ import sys
 import os
 import tempfile
 import time
+import importlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar, Any, Optional, TextIO
@@ -79,7 +80,7 @@ class Browser:
         )
 
 
-class File:
+class ResourceManager:
 
     def __init__(self, keep_html: Optional[Path] = None):
         self.keep_html = keep_html
@@ -102,9 +103,14 @@ class File:
     def path(self) -> Path:
         return self.file_path
 
+    @property
+    def directory(self) -> Path:
+        return Path(self.keep_html if self.keep_html else self.tmpdir.name)
+
     def __enter__(self):
         if self.keep_html:
-            self.file_path = self.keep_html
+            self.keep_html.mkdir(exist_ok=True, parents=True)
+            self.file_path = self.keep_html / "index.html"
         else:
             self.tmpdir = tempfile.TemporaryDirectory(prefix="lebenslauf-")
             self.file_path = Path(self.tmpdir.name) / "index.html"
@@ -122,24 +128,44 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    anchor = "lebenslauf"
+
+    base_template_source = (
+        importlib.resources.files(anchor)
+        .joinpath("resources", "template.html")
+        .read_text(encoding="utf-8")
+    )
+
+    pagedjs_ref = (
+        importlib.resources
+        .files(anchor)
+        .joinpath("resources", "vendor", "paged.polyfill.min.js")
+    )
+
     try:
-        with File(args.keep_html) as file:
+        with ResourceManager(keep_html=args.keep_html) as mgr:
+
+            with importlib.resources.as_file(pagedjs_ref) as pagedjs_path:
+                shutil.copy2(pagedjs_path, mgr.directory)
+
             process_template(
+                base_template_source=base_template_source,
                 cv=args.cv_file,
                 template=args.template_file,
                 style=args.style_file,
-                file=file
+                file=mgr
             )
             driver = init_driver(args.browser, args.repl)
-            render_page(driver, file, args.timeout)
+            render_page(driver, mgr, args.timeout)
 
             if args.repl:
                 allowed_continue = repl(
+                    base_template_source,
                     args.cv_file,
                     args.template_file,
                     args.style_file,
                     driver,
-                    file,
+                    mgr,
                     args.timeout
                 )
                 if not allowed_continue:
@@ -193,7 +219,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--keep-html",
         type=Path,
-        help="Write the rendered intermediate HTML to this path.",
+        help="Write the rendered intermediate HTML along with resources into "
+        "this directory.",
     )
     parser.add_argument(
         "-r",
@@ -228,11 +255,17 @@ def init_file(keep_html: Optional[Path]) -> TextIO:
     return tempfile.TemporaryFile("w+", encoding="utf-8")
 
 
-def process_template(cv: Path, template: Path, style: Path, file: File):
+def process_template(
+    base_template_source: str,
+    cv: Path,
+    template: Path,
+    style: Path,
+    file: ResourceManager
+):
     data = load_resume(cv)
     with open(style, "r", encoding="utf-8") as fin:
         css = fin.read()
-    html = render_html(template, css, data)
+    html = render_html(base_template_source, template, css, data)
     file.write(html)
 
 
@@ -267,19 +300,32 @@ def format_errors(exc: Any) -> str:
     return "\n".join(lines)
 
 
-def render_html(template_path: Path, style: str, data: dict[str, Any]) -> str:
+def render_html(
+    base_template_source: str,
+    template_path: Path,
+    style: str,
+    data: dict[str, Any]
+) -> str:
     if not template_path.exists():
         raise ResumeError(f"template file does not exist: {template_path}")
 
-    env = create_jinja_env(template_path.parent)
-    user_template = env.get_template(template_path.name)
+    user_template = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(str(template_path.parent)),
+        autoescape=jinja2.select_autoescape(("html", "xml")),
+        undefined=jinja2.StrictUndefined,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    ).get_template(template_path.name)
+
+    base_template = jinja2.Environment(
+        autoescape=jinja2.select_autoescape(("html", "xml")),
+        undefined=jinja2.StrictUndefined,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    ).from_string(base_template_source)
+
     user_html = user_template.render(**data, resume=data)
-
-    system_template_path = Path(__file__).with_name("template.html")
-    env = create_jinja_env(system_template_path.parent)
-    system_template = env.get_template(system_template_path.name)
-
-    return system_template.render(
+    return base_template.render(
         **data,
         resume=data,
         style=style,
@@ -287,27 +333,18 @@ def render_html(template_path: Path, style: str, data: dict[str, Any]) -> str:
     )
 
 
-def create_jinja_env(template: Path) -> jinja2.Environment:
-    return jinja2.Environment(
-        loader=jinja2.FileSystemLoader(str(template)),
-        autoescape=jinja2.select_autoescape(("html", "xml")),
-        undefined=jinja2.StrictUndefined,
-        trim_blocks=True,
-        lstrip_blocks=True,
-    )
-
-
-def render_page(driver: Chrome, file: File, timeout: float):
+def render_page(driver: Chrome, file: ResourceManager, timeout: float):
     driver.get(file.path.resolve().as_uri())
     wait_for_layout(driver, timeout)
 
 
 def repl(
+    base_template_source: str,
     cv_path: Path,
     template_path: Path,
     style_path: Path,
     driver: Chrome,
-    file: File,
+    file: ResourceManager,
     timeout: float
 ) -> bool:
     mtimes: dict[Path, int] = {
@@ -330,7 +367,13 @@ def repl(
                 if mtime != 0:
                     print(f"File changed: {path}")
                 try:
-                    process_template(cv_path, template_path, style_path, file)
+                    process_template(
+                        base_template_source,
+                        cv_path,
+                        template_path,
+                        style_path,
+                        file
+                    )
                     driver.refresh()
                 except Exception as exc:
                     print(exc, file=sys.stderr)

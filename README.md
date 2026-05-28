@@ -32,8 +32,8 @@ If `--browser` is omitted, the app searches for Chromium, Brave, then Chrome. It
 # Show help
 python -m lebenslauf --help
 
-# Save the processed HTML into rendered.html
-python -m lebenslauf example/resume.yaml example/template.html --keep-html rendered.html
+# Save the processed files into output directory
+python -m lebenslauf example/resume.yaml example/template.html --keep-html dist
 
 # Open the browser window
 python -m lebenslauf example/resume.yaml example/template.html --show-browser
