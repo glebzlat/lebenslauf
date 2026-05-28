@@ -1,7 +1,42 @@
+:root {
+  --page-width: 210mm;
+  --page-height: 297mm;
+  --page-margin: 12mm;
+  --border-color: #d8d8d8;
+  --muted: #555;
+  --text: #151515;
+  --content-gap: 5mm;
+  --section-gap: 4.2mm;
+  --item-gap: 2.8mm;
+}
+
+@page {
+  margin: 15mm;
+}
+
 .ll-body {
   font-family: Georgia, "Times New Roman", serif;
   font-size: 10.2pt;
   line-height: 1.14;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--content-gap);
+}
+
+h1, h2, h3, p {
+  margin: 0;
+}
+
+ul {
+  margin: 1.2mm 0 0;
+  padding-left: 5mm;
+}
+
+li + li {
+  margin-top: .8mm;
 }
 
 .header {
@@ -79,30 +114,3 @@
   gap: 1.2mm 4mm;
   margin-top: 2.4mm;
 }
-
-/*
-body.compact {
-  --page-margin: 9mm;
-  --content-gap: 3mm;
-  --section-gap: 2.4mm;
-  --item-gap: 1.8mm;
-  font-size: 9.5pt;
-  line-height: 1.24;
-}
-
-body.compact .header {
-  padding-bottom: 2mm;
-}
-
-body.compact .header h1 {
-  font-size: 21pt;
-}
-
-body.compact .role {
-  margin-top: .8mm;
-}
-
-body.compact .contacts {
-  margin-top: 1.8mm;
-}
-*/

@@ -6,171 +6,66 @@
 <style>
   *, *:after, *:before {
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 100%;
+    font: inherit;
+    vertical-align: baseline;
   }
 
-  :root {
-    --page-width: 210mm;
-    --page-height: 297mm;
-    --page-margin: 12mm;
-    --border-color: #d8d8d8;
-    --muted: #555;
-    --text: #151515;
-    --content-gap: 5mm;
-    --section-gap: 4.2mm;
-    --item-gap: 2.8mm;
+  /* HTML5 display-role reset for older browsers */
+  article, aside, details, figcaption, figure,
+  footer, header, hgroup, menu, nav, section {
+    display: block;
   }
 
   body {
-    margin: 0;
-    padding: 18px 0;
-    background: #dedede;
-    color: var(--text);
+    line-height: 1;
+    background-color: #eaeaea;
   }
 
-  [hidden] {
-    display: none !important;
+  ol, ul {
+    list-style: none;
   }
 
-  h1, h2, h3, p {
-    margin: 0;
+  blockquote, q {
+    quotes: none;
   }
 
-  ul {
-    margin: 1.2mm 0 0;
-    padding-left: 5mm;
+  blockquote:before, blockquote:after,
+  q:before, q:after {
+    content: '';
+    content: none;
   }
 
-  li + li {
-    margin-top: .8mm;
+  table {
+    border-collapse: collapse;
+    border-spacing: 0;
   }
 
-  .document {
-    width: var(--page-width);
-    margin: 0 auto;
-    position: relative;
+  .pagedjs_pagebox {
+    background-color: #fff;
   }
 
-  .sheet {
-    width: var(--page-width);
-    min-height: var(--page-height);
-    padding: var(--page-margin);
-    background: white;
-    box-shadow: 0 0 8px rgba(0,0,0,.15);
-    position: relative;
-  }
-
-  .page-guides {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-  }
-
-  .page-guide {
-    position: absolute;
-    left: 0;
-    right: 0;
-    border-top: 1px dashed rgba(0, 0, 0, 0.35);
-  }
-
-  .content {
+  .pagedjs_pages {
     display: flex;
     flex-direction: column;
-    gap: var(--content-gap);
+    align-items: center;
+    gap: 1cm;
+    padding: 1cm 0 1cm 0;
   }
 
   {{ style }}
-
-  @page {
-    size: A4;
-    margin: 0;
-  }
-
-  @media print {
-    body {
-      background: white;
-      padding: 0;
-    }
-
-    .document {
-      margin: 0;
-    }
-
-    .sheet {
-      box-shadow: none;
-      margin: 0;
-    }
-
-    .page-guides {
-      display: none;
-    }
-  }
 </style>
 </head>
 <body class="ll-body">
 <main class="document">
   <article class="sheet" id="sheet">
-    <div class="content">
-      {{ content | safe }}
-    </div>
+    {{ content | safe }}
   </article>
   <div class="page-guides" id="page-guides" aria-hidden="true"></div>
 </main>
-<script>
-  window.resumeFormatterReady = false;
-  window.resumeFormatterGuideState = { frame: null, observer: null };
-
-  function measurePageHeight() {
-    const probe = document.createElement("div");
-    probe.style.position = "absolute";
-    probe.style.visibility = "hidden";
-    probe.style.height = "var(--page-height)";
-    document.body.appendChild(probe);
-    const height = probe.getBoundingClientRect().height;
-    probe.remove();
-    return height;
-  }
-
-  function renderPageGuides() {
-    const sheet = document.getElementById("sheet");
-    const guides = document.getElementById("page-guides");
-    const pageHeight = measurePageHeight();
-    const boundaryCount = Math.max(0, Math.ceil(sheet.scrollHeight / pageHeight) - 1);
-
-    guides.innerHTML = "";
-    guides.style.height = `${sheet.scrollHeight}px`;
-
-    for (let index = 1; index <= boundaryCount; index += 1) {
-      const guide = document.createElement("div");
-      guide.className = "page-guide";
-      guide.style.top = `${pageHeight * index}px`;
-      guides.appendChild(guide);
-    }
-  }
-
-  function scheduleGuideRender() {
-    if (window.resumeFormatterGuideState.frame !== null) {
-      cancelAnimationFrame(window.resumeFormatterGuideState.frame);
-    }
-
-    window.resumeFormatterGuideState.frame = requestAnimationFrame(() => {
-      renderPageGuides();
-      window.resumeFormatterGuideState.frame = null;
-      window.resumeFormatterReady = true;
-    });
-  }
-
-  window.resumeFormatterLayout = function() {
-    if (!window.resumeFormatterGuideState.observer) {
-      window.resumeFormatterGuideState.observer = new ResizeObserver(scheduleGuideRender);
-      window.resumeFormatterGuideState.observer.observe(document.getElementById("sheet"));
-    }
-
-    window.resumeFormatterReady = false;
-    scheduleGuideRender();
-  };
-
-  window.addEventListener("load", window.resumeFormatterLayout);
-  window.addEventListener("resize", scheduleGuideRender);
-</script>
+<script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
 </body>
 </html>
