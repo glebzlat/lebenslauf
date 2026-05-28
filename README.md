@@ -86,8 +86,8 @@ education:
 
 The CLI renders the user-supplied template with every YAML top-level key available as a Jinja variable. It also exposes the complete YAML dictionary as `resume`.
 
-The user template must be an HTML fragment, not a full document. Do not include `<!doctype>`, `<html>`, `<head>`, `<body>`, or `<script>` tags. The app inserts the rendered fragment into its own system template, which owns the A4 page shell, print CSS, and browser-side pagination logic.
+The user template must be an HTML fragment, not a full document. Do not include `<!doctype>`, `<html>`, `<head>`, `<body>`, or `<script>` tags. The app inserts the rendered fragment into its own system template, which owns the A4 sheet shell, print CSS, and on-screen page-boundary guides.
 
-Sections that should paginate cleanly should use `class="section"` and `data-section`. Repeated entries inside a section should use `class="item"` so the system paginator can split long sections between pages.
+Templates are no longer constrained by browser-side pagination markup. Use whatever structure fits your layout; the browser will paginate naturally during printing, while the app shows dashed A4 boundary lines on screen as a visual guide only.
 
-The included `template.html` is a user template example. The system template lives in `lebenslauf/system_template.html`; normal users do not need to pass it on the command line.
+The included `template.html` is a user template example. The system template lives in `lebenslauf/template.html`; normal users do not need to pass it on the command line.

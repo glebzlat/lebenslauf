@@ -44,31 +44,35 @@
     margin-top: .8mm;
   }
 
-  .pages {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    align-items: center;
+  .document {
+    width: var(--page-width);
+    margin: 0 auto;
+    position: relative;
   }
 
-  .page {
+  .sheet {
     width: var(--page-width);
-    height: var(--page-height);
+    min-height: var(--page-height);
     padding: var(--page-margin);
     background: white;
     box-shadow: 0 0 8px rgba(0,0,0,.15);
-    overflow: hidden;
-    page-break-after: always;
-    break-after: page;
+    position: relative;
   }
 
-  .page:last-child {
-    page-break-after: auto;
-    break-after: auto;
+  .page-guides {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .page-guide {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px dashed rgba(0, 0, 0, 0.35);
   }
 
   .content {
-    height: 100%;
     display: flex;
     flex-direction: column;
     gap: var(--content-gap);
@@ -87,222 +91,86 @@
       padding: 0;
     }
 
-    .pages {
-      gap: 0;
+    .document {
+      margin: 0;
     }
 
-    .page {
+    .sheet {
       box-shadow: none;
       margin: 0;
+    }
+
+    .page-guides {
+      display: none;
     }
   }
 </style>
 </head>
 <body class="ll-body">
-<main id="source" hidden>
-  {{ content | safe }}
+<main class="document">
+  <article class="sheet" id="sheet">
+    <div class="content">
+      {{ content | safe }}
+    </div>
+  </article>
+  <div class="page-guides" id="page-guides" aria-hidden="true"></div>
 </main>
-<div class="pages" id="pages">
-</div>
 <script>
   window.resumeFormatterReady = false;
-  window.resumeFormatterSource = null;
+  window.resumeFormatterGuideState = { frame: null, observer: null };
 
-  function pageOverflow(page) {
-    const content = page.querySelector(".content");
-    return content.scrollHeight > content.clientHeight + 1;
+  function measurePageHeight() {
+    const probe = document.createElement("div");
+    probe.style.position = "absolute";
+    probe.style.visibility = "hidden";
+    probe.style.height = "var(--page-height)";
+    document.body.appendChild(probe);
+    const height = probe.getBoundingClientRect().height;
+    probe.remove();
+    return height;
   }
 
-  function createPage() {
-    const page = document.createElement("article");
-    page.className = "page";
-    const content = document.createElement("div");
-    content.className = "content";
-    page.appendChild(content);
-    document.getElementById("pages").appendChild(page);
-    return page;
+  function renderPageGuides() {
+    const sheet = document.getElementById("sheet");
+    const guides = document.getElementById("page-guides");
+    const pageHeight = measurePageHeight();
+    const boundaryCount = Math.max(0, Math.ceil(sheet.scrollHeight / pageHeight) - 1);
+
+    guides.innerHTML = "";
+    guides.style.height = `${sheet.scrollHeight}px`;
+
+    for (let index = 1; index <= boundaryCount; index += 1) {
+      const guide = document.createElement("div");
+      guide.className = "page-guide";
+      guide.style.top = `${pageHeight * index}px`;
+      guides.appendChild(guide);
+    }
   }
 
-  function annotateSectionTree(section) {
-    section.setAttribute("data-ll-path", "root");
-    section.setAttribute("data-ll-index", "-1");
-
-    function visit(node) {
-      Array.from(node.children).forEach((child, index) => {
-        const parentPath = node.getAttribute("data-ll-path");
-        child.setAttribute("data-ll-path", `${parentPath}.${index}`);
-        child.setAttribute("data-ll-index", String(index));
-        visit(child);
-      });
+  function scheduleGuideRender() {
+    if (window.resumeFormatterGuideState.frame !== null) {
+      cancelAnimationFrame(window.resumeFormatterGuideState.frame);
     }
 
-    visit(section);
-  }
-
-  function cleanupSectionTree(node) {
-    node.removeAttribute("data-ll-path");
-    node.removeAttribute("data-ll-index");
-    Array.from(node.children).forEach(cleanupSectionTree);
-  }
-
-  function isSplitItem(node) {
-    return node.classList.contains("item") && !node.querySelector(".item");
-  }
-
-  function hasSplitItems(node) {
-    return Array.from(node.children).some((child) => isSplitItem(child) || hasSplitItems(child));
-  }
-
-  function cloneSectionFragment(node, selectedItemPaths, includeStaticContent) {
-    if (isSplitItem(node)) {
-      return selectedItemPaths.has(node.getAttribute("data-ll-path")) ? node.cloneNode(true) : null;
-    }
-
-    const clone = node.cloneNode(false);
-
-    Array.from(node.children).forEach((child) => {
-      if (isSplitItem(child)) {
-        if (selectedItemPaths.has(child.getAttribute("data-ll-path"))) {
-          clone.appendChild(child.cloneNode(true));
-        }
-        return;
-      }
-
-      if (hasSplitItems(child)) {
-        const childClone = cloneSectionFragment(child, selectedItemPaths, includeStaticContent);
-        if (childClone && childClone.children.length) {
-          clone.appendChild(childClone);
-        }
-        return;
-      }
-
-      if (includeStaticContent) {
-        clone.appendChild(child.cloneNode(true));
-      }
-    });
-
-    return clone;
-  }
-
-  function splitItems(section) {
-    return Array.from(section.querySelectorAll(".item")).filter(isSplitItem);
-  }
-
-  function buildSectionPart(section, items, includeStaticContent) {
-    const selectedItemPaths = new Set(items.map((item) => item.getAttribute("data-ll-path")));
-    const part = cloneSectionFragment(section, selectedItemPaths, includeStaticContent);
-    cleanupSectionTree(part);
-    return part;
-  }
-
-  function appendSection(section, page, content) {
-    const wholeSection = section.cloneNode(true);
-    cleanupSectionTree(wholeSection);
-    content.appendChild(wholeSection);
-
-    if (!pageOverflow(page)) {
-      return { page, content };
-    }
-
-    wholeSection.remove();
-    const items = splitItems(section);
-
-    if (!items.length) {
-      page = createPage();
-      content = page.querySelector(".content");
-      content.appendChild(wholeSection);
-      return { page, content };
-    }
-
-    let index = 0;
-    while (index < items.length) {
-      let fittedCount = 0;
-
-      for (let end = index; end < items.length; end += 1) {
-        const candidate = buildSectionPart(section, items.slice(index, end + 1), index === 0);
-        content.appendChild(candidate);
-
-        if (pageOverflow(page)) {
-          candidate.remove();
-          break;
-        }
-
-        candidate.remove();
-        fittedCount = end - index + 1;
-      }
-
-      if (fittedCount === 0) {
-        const emptyPage = content.children.length === 0;
-        if (!emptyPage) {
-          page = createPage();
-          content = page.querySelector(".content");
-          continue;
-        }
-
-        const forcedPart = buildSectionPart(section, [items[index]], index === 0);
-        content.appendChild(forcedPart);
-        index += 1;
-      } else {
-        const finalPart = buildSectionPart(section, items.slice(index, index + fittedCount), index === 0);
-        content.appendChild(finalPart);
-        index += fittedCount;
-      }
-
-      if (index < items.length) {
-        page = createPage();
-        content = page.querySelector(".content");
-      }
-    }
-
-    return { page, content };
-  }
-
-  function paginate() {
-    const pages = document.getElementById("pages");
-    const header = window.resumeFormatterSource.header.cloneNode(true);
-    const sections = window.resumeFormatterSource.sections;
-
-    pages.innerHTML = "";
-    let page = createPage();
-    let content = page.querySelector(".content");
-    content.appendChild(header);
-
-    sections.forEach((section) => {
-      ({ page, content } = appendSection(section, page, content));
+    window.resumeFormatterGuideState.frame = requestAnimationFrame(() => {
+      renderPageGuides();
+      window.resumeFormatterGuideState.frame = null;
+      window.resumeFormatterReady = true;
     });
   }
 
   window.resumeFormatterLayout = function() {
-    if (window.resumeFormatterReady) {
-      return;
+    if (!window.resumeFormatterGuideState.observer) {
+      window.resumeFormatterGuideState.observer = new ResizeObserver(scheduleGuideRender);
+      window.resumeFormatterGuideState.observer.observe(document.getElementById("sheet"));
     }
 
-    if (!window.resumeFormatterSource) {
-      const source = document.getElementById("source");
-      const sections = Array.from(source.querySelectorAll("[ll-section]")).map((section) => {
-        const clone = section.cloneNode(true);
-        annotateSectionTree(clone);
-        return clone;
-      });
-      window.resumeFormatterSource = {
-        header: source.querySelector("[ll-header]").cloneNode(true),
-        sections
-      };
-    }
-
-    document.body.classList.remove("compact");
-    paginate();
-    if (document.querySelectorAll(".page").length === 1) {
-      window.resumeFormatterReady = true;
-      return;
-    }
-
-    document.body.classList.add("compact");
-    paginate();
-    window.resumeFormatterReady = true;
+    window.resumeFormatterReady = false;
+    scheduleGuideRender();
   };
 
   window.addEventListener("load", window.resumeFormatterLayout);
+  window.addEventListener("resize", scheduleGuideRender);
 </script>
 </body>
 </html>
