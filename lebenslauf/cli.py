@@ -20,7 +20,12 @@ from selenium.webdriver import Chrome
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.print_page_options import PrintOptions
-from selenium.common.exceptions import JavascriptException
+from selenium.webdriver.remote.command import Command
+from selenium.common.exceptions import (
+    JavascriptException,
+    InvalidSessionIdException,
+    NoSuchWindowException
+)
 from selenium.webdriver.support.ui import WebDriverWait
 
 from lebenslauf import models
@@ -129,7 +134,7 @@ def main(argv: list[str] | None = None) -> int:
             render_page(driver, file, args.timeout)
 
             if args.repl:
-                repl(
+                allowed_continue = repl(
                     args.cv_file,
                     args.template_file,
                     args.style_file,
@@ -137,6 +142,8 @@ def main(argv: list[str] | None = None) -> int:
                     file,
                     args.timeout
                 )
+                if not allowed_continue:
+                    return 0
 
         pdf_bytes = print_html(driver)
         args.output.write_bytes(pdf_bytes)
@@ -302,7 +309,7 @@ def repl(
     driver: Chrome,
     file: File,
     timeout: float
-):
+) -> bool:
     mtimes: dict[Path, int] = {
         cv_path: 0,
         template_path: 0,
@@ -329,10 +336,16 @@ def repl(
                     print(exc, file=sys.stderr)
             mtimes[path] = stat.st_mtime
 
+        try:
+            driver.execute(Command.GET_CURRENT_URL)
+        except (InvalidSessionIdException, NoSuchWindowException):
+            print("Browser was closed, exiting...")
+            return False
+
         ready = select([sys.stdin], [], [], 0.5)
         if ready[0]:
             sys.stdin.readline()
-            break
+            return True
 
 
 def print_html(
