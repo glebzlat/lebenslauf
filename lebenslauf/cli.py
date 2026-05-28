@@ -381,7 +381,11 @@ def repl(
 
         try:
             driver.execute(Command.GET_CURRENT_URL)
-        except (InvalidSessionIdException, NoSuchWindowException):
+        except (
+            InvalidSessionIdException,
+            NoSuchWindowException,
+            WebDriverException
+        ):
             print("Browser was closed, exiting...")
             return False
 
