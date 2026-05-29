@@ -33,6 +33,9 @@ from lebenslauf import models
 from lebenslauf.template import Template, TemplateError
 
 
+DEFAULT_TEMPLATE = "laconic"
+
+
 class ResumeError(Exception):
     """Raised when the resume cannot be rendered or printed."""
 
@@ -200,7 +203,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-t",
         "--template",
-        default="two-column-laconic",
+        default=DEFAULT_TEMPLATE,
         help="Template name or path."
     )
     parser.add_argument(
