@@ -17,13 +17,13 @@ needed. You do need a Chromium-based browser installed.
 ## Usage
 
 ```bash
-python -m lebenslauf example_resume.yaml template.html -o resume.pdf
+python -m lebenslauf cv.yaml -o resume.pdf
 ```
 
 You can pass a browser executable explicitly:
 
 ```bash
-python -m lebenslauf example_resume.yaml template.html -o resume.pdf --browser /usr/bin/brave-browser
+python -m lebenslauf cv.yaml --browser /usr/bin/brave-browser
 ```
 
 If `--browser` is omitted, the app searches for Chromium, Brave, then Chrome. It exits with an error if none is found.
@@ -33,10 +33,13 @@ If `--browser` is omitted, the app searches for Chromium, Brave, then Chrome. It
 python -m lebenslauf --help
 
 # Save the processed files into output directory
-python -m lebenslauf example/resume.yaml example/template.html --keep-html dist
+python -m lebenslauf example/resume.yaml --keep-html dist
 
 # Open the browser window
-python -m lebenslauf example/resume.yaml example/template.html --show-browser
+python -m lebenslauf example/resume.yaml --show-browser
+
+# Select template name or folder
+python -m lebenslauf example/resume.yaml -t template-name
 ```
 
 ## YAML Format

@@ -30,6 +30,7 @@ from selenium.common.exceptions import (
 from selenium.webdriver.support.ui import WebDriverWait
 
 from lebenslauf import models
+from lebenslauf.template import Template, TemplateError
 
 
 class ResumeError(Exception):
@@ -143,6 +144,8 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     try:
+        template = resolve_template(args.template)
+
         with ResourceManager(keep_html=args.keep_html) as mgr:
 
             with importlib.resources.as_file(pagedjs_ref) as pagedjs_path:
@@ -151,8 +154,8 @@ def main(argv: list[str] | None = None) -> int:
             process_template(
                 base_template_source=base_template_source,
                 cv=args.cv_file,
-                template=args.template_file,
-                style=args.style_file,
+                template=template.html,
+                style=template.css,
                 file=mgr
             )
             driver = init_driver(args.browser, args.repl)
@@ -162,8 +165,8 @@ def main(argv: list[str] | None = None) -> int:
                 allowed_continue = repl(
                     base_template_source,
                     args.cv_file,
-                    args.template_file,
-                    args.style_file,
+                    template.html,
+                    template.css,
                     driver,
                     mgr,
                     args.timeout
@@ -174,7 +177,7 @@ def main(argv: list[str] | None = None) -> int:
         pdf_bytes = print_html(driver)
         args.output.write_bytes(pdf_bytes)
 
-    except ResumeError as exc:
+    except (ResumeError, TemplateError) as exc:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(f"{fname}:{exc_tb.tb_lineno}: {exc}", file=sys.stderr)
@@ -192,17 +195,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "cv_file",
         type=Path,
-        help="YAML resume description."
+        help="YAML CV description."
     )
     parser.add_argument(
-        "template_file",
-        type=Path,
-        help="User-supplied Jinja HTML fragment."
-    )
-    parser.add_argument(
-        "style_file",
-        type=Path,
-        help="CSS styles for user-supplied Jinja HTML fragment."
+        "-t",
+        "--template",
+        default="two-column-laconic",
+        help="Template name or path."
     )
     parser.add_argument(
         "-o",
@@ -235,6 +234,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="Seconds to wait for browser layout before printing.",
     )
     return parser
+
+
+def resolve_template(template: str) -> Template:
+    template_path = Path(template)
+    if template_path.is_dir():
+        return Template.from_dir(template_path)
+
+    try:
+        template_path = (
+            importlib.resources.files("lebenslauf")
+            .joinpath("resources", "templates", template)
+        )
+        is_dir = template_path.is_dir()
+    except Exception:
+        is_dir = False
+
+    if not is_dir:
+        raise ResumeError(f"template {template} not found")
+
+    return Template.from_dir(template_path)
 
 
 def init_driver(browser_arg: str, repl: bool) -> Chrome:
