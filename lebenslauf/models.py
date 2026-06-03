@@ -83,8 +83,8 @@ class Manifest(StrictModel):
 
     @field_validator("*", mode="before")
     @classmethod
-    def validate(cls, v, info: ValidationInfo):
-        assert "base_dir" in info.context
+    def _validate_fields(cls, v, info: ValidationInfo):
+        assert info.context is not None and "base_dir" in info.context
         base_dir = Path(info.context["base_dir"])
 
         if isinstance(v, list):

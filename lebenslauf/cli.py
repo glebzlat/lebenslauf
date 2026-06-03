@@ -86,8 +86,11 @@ def main(argv: list[str] | None = None) -> int:
 
     except (LebenslaufError, TemplateError) as exc:
         exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print(f"{fname}:{exc_tb.tb_lineno}: {exc}", file=sys.stderr)
+        exc_context = ""
+        if exc_tb:
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            exc_context = f"{fname}:{exc_tb.tb_lineno}: "
+        print(f"{exc_context}{exc}", file=sys.stderr)
         return 1
 
     return 0
@@ -197,7 +200,7 @@ def repl(
     file: ResourceManager,
     timeout: float
 ) -> bool:
-    mtimes: dict[Path, int] = {
+    mtimes: dict[Path, float] = {
         cv_path: 0,
         template_path: 0,
         style_path: 0
