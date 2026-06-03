@@ -1,10 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import importlib
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Any
 
 import yaml
+
+from lebenslauf import models
+from .exceptions import LebenslaufError
+
+
+MANIFEST_FILENAME = "manifest.yaml"
 
 
 class TemplateError(RuntimeError):
@@ -14,66 +20,50 @@ class TemplateError(RuntimeError):
 @dataclass(frozen=True)
 class Template:
 
-    html: Path
-    css: Path
-    resources: list[Path] = field(default_factory=list)
+    manifest: models.Manifest
 
     @staticmethod
     def from_dir(directory: Path) -> Template:
-        meta = Template.get_meta(directory)
-
-        if not isinstance(meta, dict):
-            raise TemplateError("meta must be a dict")
-
-        html_path = Template.get_path(meta, "html", directory)
-        css_path = Template.get_path(meta, "css", directory)
-
-        resources = Template.get_resources(meta, directory)
-
-        return Template(
-            html=html_path,
-            css=css_path,
-            resources=resources
-        )
-
-    @staticmethod
-    def get_meta(directory: Path) -> Any:
-        path = directory / "meta.yaml"
+        path = directory / MANIFEST_FILENAME
         if not path.is_file():
             raise TemplateError(f"{path} does not exist or is not a file")
-
         with open(path, "r", encoding="utf-8") as fin:
-            return yaml.safe_load(fin)
+            data = yaml.safe_load(fin)
 
-    @staticmethod
-    def get_path(meta: dict, key: str, root: Path) -> Path:
-        value = meta.get(key)
-        if value is None:
-            raise TemplateError(f"key {key} not found in meta")
+        manifest = models.Manifest.model_validate(
+            data,
+            context={"base_dir": directory}
+        )
+        return Template(manifest)
 
-        path = root / value
-        if not path.is_file():
-            raise TemplateError(
-                f"{key}: {value} does not exist or is not a file")
+    @property
+    def html(self) -> Path:
+        return self.manifest.html
 
-        return path
+    @property
+    def css(self) -> Path:
+        return self.manifest.css
 
-    @staticmethod
-    def get_resources(meta: dict, root: Path) -> Optional[list[Path]]:
-        resources_section = meta.get("resources")
-        if resources_section is None:
-            return
+    @property
+    def resources(self) -> tuple[Path, ...]:
+        return tuple(self.resources)
 
-        if not isinstance(resources_section, list):
-            raise TemplateError("resources must be a list")
 
-        resources = []
-        for rc in resources_section:
-            path = root / rc
-            if not path.is_file():
-                raise TemplateError(
-                    f"resources: {rc} does not exist or is not a file"
-                )
-            resources.append(path)
+def resolve_template(template: str) -> Template:
+    template_path = Path(template)
+    if template_path.is_dir():
+        return Template.from_dir(template_path)
 
-        return resources
+    try:
+        template_path = (
+            importlib.resources.files("lebenslauf")
+            .joinpath("resources", "templates", template)
+        )
+        is_dir = template_path.is_dir()
+    except Exception:
+        is_dir = False
+
+    if not is_dir:
+        raise LebenslaufError(f"template {template} not found")
+
+    return Template.from_dir(template_path)

@@ -1,8 +1,15 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Optional
+from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    ValidationInfo
+)
 
 
 NonEmptyStr = Annotated[str, Field(min_length=1)]
@@ -67,3 +74,35 @@ class Resume(StrictModel):
     certificates: list[Certificate] = Field(default_factory=list)
     languages: list[Language] = Field(default_factory=list)
     education: list[Education] = Field(default_factory=list)
+
+
+class Manifest(StrictModel):
+    html: Path
+    css: Path
+    resources: Optional[list[Path]] = None
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def validate(cls, v, info: ValidationInfo):
+        assert "base_dir" in info.context
+        base_dir = Path(info.context["base_dir"])
+
+        if isinstance(v, list):
+            lst = []
+            for p in v:
+                p = Path(p)
+                if not p.is_absolute():
+                    p = base_dir / p
+                    if not p.is_file():
+                        raise ValueError(
+                            f"file {p} does not exist or is not a file"
+                        )
+                lst.append(p)
+            return lst
+
+        path = Path(v)
+        if not path.is_absolute():
+            path = base_dir / path
+        if not path.is_file():
+            raise ValueError(f"file {path} does not exist or is not a file")
+        return path

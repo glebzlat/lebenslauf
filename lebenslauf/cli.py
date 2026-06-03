@@ -21,7 +21,7 @@ from selenium.common.exceptions import (
 )
 
 from lebenslauf import models
-from lebenslauf.template import Template, TemplateError
+from lebenslauf.template import TemplateError, resolve_template
 from lebenslauf.exceptions import LebenslaufError
 from lebenslauf.resource_manager import ResourceManager
 from lebenslauf.rendering import print_html, render_html, render_page
@@ -141,26 +141,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Seconds to wait for browser layout before printing.",
     )
     return parser
-
-
-def resolve_template(template: str) -> Template:
-    template_path = Path(template)
-    if template_path.is_dir():
-        return Template.from_dir(template_path)
-
-    try:
-        template_path = (
-            importlib.resources.files("lebenslauf")
-            .joinpath("resources", "templates", template)
-        )
-        is_dir = template_path.is_dir()
-    except Exception:
-        is_dir = False
-
-    if not is_dir:
-        raise LebenslaufError(f"template {template} not found")
-
-    return Template.from_dir(template_path)
 
 
 def process_template(
