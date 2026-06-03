@@ -62,8 +62,7 @@ def main(argv: list[str] | None = None) -> int:
             process_template(
                 base_template_source=base_template_source,
                 cv=args.cv_file,
-                template=template.html,
-                style=template.css,
+                template=template,
                 file=mgr
             )
             render_page(driver, mgr, args.timeout)
@@ -84,15 +83,19 @@ def main(argv: list[str] | None = None) -> int:
             args.output.write_bytes(pdf_bytes)
 
     except (LebenslaufError, TemplateError) as exc:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        exc_context = ""
-        if exc_tb:
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            exc_context = f"{fname}:{exc_tb.tb_lineno}: "
-        print(f"{exc_context}{exc}", file=sys.stderr)
+        pretty_print_error(exc)
         return 1
 
     return 0
+
+
+def pretty_print_error(exc: Exception):
+    exc_type, exc_obj, exc_tb = sys.exc_info()
+    exc_context = ""
+    if exc_tb:
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        exc_context = f"{fname}:{exc_tb.tb_lineno}: "
+    print(f"{exc_context}{exc}", file=sys.stderr)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -147,15 +150,21 @@ def build_parser() -> argparse.ArgumentParser:
 def process_template(
     base_template_source: str,
     cv: Path,
-    template: Path,
-    style: Path,
+    template: Template,
     file: ResourceManager
 ):
-    data = load_resume(cv)
-    with open(style, "r", encoding="utf-8") as fin:
-        css = fin.read()
-    html = render_html(base_template_source, template, css, data)
-    file.write(html)
+    cv_data = load_resume(cv)
+    try:
+        with open(template.css, "r", encoding="utf-8") as fin:
+            css_data = fin.read()
+        with open(template.html, "r", encoding="utf-8") as fin:
+            html_data = fin.read()
+        html = render_html(base_template_source, html_data, css_data, cv_data)
+        file.write(html)
+    except (FileNotFoundError, IsADirectoryError) as exc:
+        raise LebenslaufError(
+            f"file {exc.filename} does not exist or is not a file"
+        )
 
 
 def load_resume(path: Path) -> dict[str, Any]:
@@ -222,13 +231,12 @@ def repl(
                     process_template(
                         base_template_source,
                         cv_path,
-                        template.html,
-                        template.css,
+                        template,
                         file
                     )
                     driver.refresh()
-                except Exception as exc:
-                    print(exc, file=sys.stderr)
+                except (LebenslaufError, TemplateError) as exc:
+                    pretty_print_error(exc)
             mtimes[path] = stat.st_mtime
 
         try:

@@ -1,6 +1,5 @@
 import base64
 import time
-from pathlib import Path
 from typing import Any
 
 import jinja2
@@ -16,20 +15,16 @@ from .exceptions import LebenslaufError
 
 def render_html(
     base_template_source: str,
-    template_path: Path,
+    template_source: str,
     style: str,
     data: dict[str, Any]
 ) -> str:
-    if not template_path.exists():
-        raise LebenslaufError(f"template file does not exist: {template_path}")
-
     user_template = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(str(template_path.parent)),
         autoescape=jinja2.select_autoescape(("html", "xml")),
         undefined=jinja2.StrictUndefined,
         trim_blocks=True,
         lstrip_blocks=True,
-    ).get_template(template_path.name)
+    ).from_string(template_source)
 
     base_template = jinja2.Environment(
         autoescape=jinja2.select_autoescape(("html", "xml")),
