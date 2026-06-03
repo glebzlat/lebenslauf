@@ -54,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
 
         with (
             ResourceManager(keep_html=args.keep_html) as mgr,
-            BrowserSession(args.browser, headless=args.repl) as driver
+            BrowserSession(args.browser, headless=not args.repl) as driver
         ):
             with importlib.resources.as_file(pagedjs_ref) as pagedjs_path:
                 shutil.copy2(pagedjs_path, mgr.directory)
