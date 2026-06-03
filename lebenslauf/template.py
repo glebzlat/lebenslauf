@@ -47,7 +47,7 @@ class Template:
 
     @property
     def resources(self) -> tuple[Path, ...]:
-        return tuple(self.resources)
+        return tuple(self.manifest.resources or ())
 
 
 def resolve_template(template: str) -> Template:
