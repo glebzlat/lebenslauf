@@ -94,3 +94,15 @@ The user template must be an HTML fragment, not a full document. Do not include 
 Templates are no longer constrained by browser-side pagination markup. Use whatever structure fits your layout; the browser will paginate naturally during printing, while the app shows dashed A4 boundary lines on screen as a visual guide only.
 
 The included `template.html` is a user template example. The system template lives in `lebenslauf/template.html`; normal users do not need to pass it on the command line.
+
+## Building
+
+Use the Makefile to prepare local development dependencies and generated assets:
+
+```bash
+make install
+make vendor
+make compile
+```
+
+`make install` runs both `pip install -r requirements.txt` and `npm install`. `make vendor` rebuilds the local Paged.js browser asset from the pinned npm dependency and copies its license into `lebenslauf/resources/vendor/`.

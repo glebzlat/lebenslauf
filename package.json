@@ -1,0 +1,16 @@
+{
+  "name": "lebenslauf-assets",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Build-time asset tooling for Lebenslauf.",
+  "scripts": {
+    "vendor:pagedjs": "npm run vendor:pagedjs:minify && npm run vendor:pagedjs:license",
+    "vendor:pagedjs:minify": "terser node_modules/pagedjs/dist/paged.polyfill.js --compress --mangle --comments '/@license|@preserve|@copyright/' --output lebenslauf/resources/vendor/paged.polyfill.min.js",
+    "vendor:pagedjs:license": "cp node_modules/pagedjs/LICENSE.md lebenslauf/resources/vendor/LICENSE.pagedjs.md",
+    "vendor": "npm run vendor:pagedjs"
+  },
+  "devDependencies": {
+    "pagedjs": "0.4.3",
+    "terser": "^5.43.1"
+  }
+}
