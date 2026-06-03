@@ -21,7 +21,7 @@ from selenium.common.exceptions import (
 )
 
 from lebenslauf import models
-from lebenslauf.template import TemplateError, resolve_template
+from lebenslauf.template import Template, TemplateError, resolve_template
 from lebenslauf.exceptions import LebenslaufError
 from lebenslauf.resource_manager import ResourceManager
 from lebenslauf.rendering import print_html, render_html, render_page
@@ -72,8 +72,7 @@ def main(argv: list[str] | None = None) -> int:
                 allowed_continue = repl(
                     base_template_source,
                     args.cv_file,
-                    template.html,
-                    template.css,
+                    template,
                     driver,
                     mgr,
                     args.timeout
@@ -194,16 +193,17 @@ def format_errors(exc: Any) -> str:
 def repl(
     base_template_source: str,
     cv_path: Path,
-    template_path: Path,
-    style_path: Path,
+    template: Template,
     driver: Chrome,
     file: ResourceManager,
     timeout: float
 ) -> bool:
     mtimes: dict[Path, float] = {
         cv_path: 0,
-        template_path: 0,
-        style_path: 0
+        template.html: 0,
+        template.css: 0,
+        template.meta: 0,
+        **{r: 0 for r in template.resources}
     }
 
     if not sys.stdin.isatty():
@@ -223,8 +223,8 @@ def repl(
                     process_template(
                         base_template_source,
                         cv_path,
-                        template_path,
-                        style_path,
+                        template.html,
+                        template.css,
                         file
                     )
                     driver.refresh()

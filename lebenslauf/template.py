@@ -32,7 +32,7 @@ class Template:
             data = yaml.safe_load(fin)
 
         manifest = models.Manifest.model_validate(
-            data,
+            {"meta": MANIFEST_FILENAME, **data},
             context={"base_dir": directory}
         )
         return Template(manifest)
@@ -48,6 +48,10 @@ class Template:
     @property
     def resources(self) -> tuple[Path, ...]:
         return tuple(self.manifest.resources or ())
+
+    @property
+    def meta(self) -> Path:
+        return self.manifest.meta
 
 
 def resolve_template(template: str) -> Template:

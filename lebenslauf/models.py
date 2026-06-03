@@ -77,6 +77,7 @@ class Resume(StrictModel):
 
 
 class Manifest(StrictModel):
+    meta: Path
     html: Path
     css: Path
     resources: Optional[list[Path]] = None
