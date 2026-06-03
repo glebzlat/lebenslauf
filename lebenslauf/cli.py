@@ -97,7 +97,6 @@ def main(argv: list[str] | None = None) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="resume-formatter",
         description="Render a YAML resume through a Jinja HTML fragment and "
                     "print it to PDF.",
     )
