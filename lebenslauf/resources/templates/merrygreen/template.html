@@ -1,0 +1,109 @@
+<div class="resume">
+  <header class="hero">
+    <div class="identity">
+      <h1>{{ person.name }}</h1>
+      <p class="role">{{ person.role }}</p>
+    </div>
+
+    <div class="contacts">
+      {% for contact in person.contacts %}
+        <div class="contact">
+          {% if contact.icon %}
+            <img class="contact-icon" src="{{ contact.icon }}" alt="" aria-hidden="true">
+          {% endif %}
+          {% if contact.href %}
+            <a class="contact-text" href="{{ contact.href }}">
+              <span>{{ contact.text }}</span>
+            </a>
+          {% else %}
+            <div class="contact-text">
+              <span>{{ contact.text }}</span>
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </header>
+
+  <div class="columns">
+    <aside class="side-column">
+      {% if skills %}
+      <section class="section">
+        <h2>Skills</h2>
+        <div class="skill-list">
+          {% for skill in skills %}
+          <span>{{ skill }}</span>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if certificates %}
+      <section class="section">
+        <h2>Certificates</h2>
+        {% for item in certificates %}
+        <div class="item certificate">
+          <span class="certificate-title">{{ item.name }}</span>
+          <span class="certificate-issuer"> - {{ item.issuer }}</span>
+        </div>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      {% if languages %}
+      <section class="section">
+        <h2>Languages</h2>
+        {% for item in languages %}
+        <div class="item language">
+          <span class="language-title">{{ item.name }}</span>
+          <span class="language-level"> {{ item.level }}</span>
+        </div>
+        {% endfor %}
+      </section>
+      {% endif %}
+    </aside>
+
+    <div class="main-column">
+      {% if experience %}
+      <section class="section">
+        <h2>Experience</h2>
+        {% for item in experience %}
+        <div class="item">
+          <div class="item-head">
+            <div>
+              <p class="job-title">{{ item.role }}</p>
+              <p class="job-date">{{ item.duration.start }} - {{ item.duration.end }}</p>
+            </div>
+            <p class="job-dash">&#8212;</p>
+            <p class="job-company">{{ item.company }}</p>
+          </div>
+          <ul class="responsibilities-list">
+            {% for responsibility in item.responsibilities %}
+            <li class="responsibility-item">{{ responsibility }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      {% if education %}
+      <section class="section">
+        <h2>Education</h2>
+        {% for item in education %}
+        <div class="item education">
+          <div class="item-head">
+            <div>
+              <p class="education-title">{{ item.academy }}</p>
+              <p class="education-date">{{ item.duration.start }} - {{ item.duration.end }}</p>
+            </div>
+            <p class="education-spec">{{ item.specialization.type }}: {{ item.specialization.name }}</p>
+          </div>
+        </div>
+        {% endfor %}
+      </section>
+      {% endif %}
+    </div>
+  </div>
+  </div>
+</div>

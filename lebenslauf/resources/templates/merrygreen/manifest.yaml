@@ -1,0 +1,16 @@
+html: template.html
+css: style.css
+
+resources:
+  images:
+    phone: img/phone.svg
+    email: img/email.svg
+    telegram: img/telegram.svg
+    linkedin: img/linkedin.svg
+    github: img/github.svg
+    gitlab: img/gitlab.svg
+  fonts:
+    merriweather-roman: fonts/Merriweather/Merriweather-VariableFont_opsz,wdth,wght.ttf
+    merriweather-italic: fonts/Merriweather/Merriweather-Italic-VariableFont_opsz,wdth,wght.ttf
+    open-sans-roman: fonts/Open_Sans/OpenSans-VariableFont_wdth,wght.ttf
+    open-sans-italic: fonts/Open_Sans/OpenSans-Italic-VariableFont_wdth,wght.ttf

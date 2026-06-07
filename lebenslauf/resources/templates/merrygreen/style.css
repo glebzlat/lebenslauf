@@ -1,0 +1,247 @@
+@font-face {
+  font-family: "Merriweather";
+  src: url("fonts/Merriweather/Merriweather-VariableFont_opsz,wdth,wght.ttf")
+    format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  font-variation-settings: "wght" 400;
+}
+
+@font-face {
+  font-family: "Merriweather";
+  src: url("fonts/Merriweather/Merriweather-Italic-VariableFont_opsz,wdth,wght.ttf")
+    format("truetype");
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  font-variation-settings: "wght" 400;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  src: url("fonts/Open_Sans/OpenSans-VariableFont_wdth,wght.ttf")
+    format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  font-variation-settings: "wght" 400;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  src: url("fonts/Open_Sans/OpenSans-Italic-VariableFont_wdth,wght.ttf")
+    format("truetype");
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  font-variation-settings: "wght" 400;
+}
+
+:root {
+  --heading: #3b7f2a;
+  --muted: #6a6a6a;
+  --text: #151515;
+  --content-gap: 5mm;
+  --item-gap: 3.6mm;
+  --column-gap: 9mm;
+  --side-width: 32%;
+  --serif: "Merriweather", Georgia, serif;
+  --sans: "Open Sans", Arial, sans-serif;
+}
+
+@page {
+  margin: 18mm 17mm;
+}
+
+.ll-body {
+  font-size: 9pt;
+  line-height: 1.18;
+  color: var(--text);
+  font-family: var(--serif);
+}
+
+.resume {
+  display: flex;
+  flex-direction: column;
+  gap: var(--content-gap);
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+ul {
+  margin: 2.3mm 0 0;
+  padding-left: 4.7mm;
+}
+
+li + li {
+  margin-top: 2mm;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10mm;
+  padding-bottom: 1mm;
+}
+
+.identity h1 {
+  font-family: var(--serif);
+  font-size: 31pt;
+  line-height: 0.96;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.role {
+  font-family: var(--sans);
+  margin-top: 4.2mm;
+  font-size: 9pt;
+  color: var(--text);
+}
+
+.contacts {
+  font-family: var(--sans);
+  display: flex;
+  flex-direction: column;
+  gap: 2.5mm;
+  color: var(--text);
+  font-size: 9pt;
+  text-align: right;
+  min-width: 58mm;
+}
+
+.contact {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 2.6mm;
+}
+
+.contact-icon {
+  width: 4mm;
+  height: 4mm;
+  flex: 0 0 auto;
+}
+
+.columns {
+  display: flow-root;
+}
+
+.main-column,
+.side-column {
+  min-width: 0;
+}
+
+.side-column {
+  float: right;
+  width: var(--side-width);
+}
+
+.main-column {
+  margin-right: calc(var(--side-width) + var(--column-gap));
+}
+
+.section + .section {
+  margin-top: 7mm
+}
+
+.section h2 {
+  font-family: var(--sans);
+  padding-bottom: 1.1mm;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 11pt;
+  font-weight: 800;
+  line-height: 1.15;
+  text-transform: uppercase;
+  color: var(--heading);
+}
+
+.item {
+  margin-top: var(--item-gap);
+}
+
+.item-head {
+  display: flex;
+  gap: 4mm;
+  align-items: baseline;
+}
+
+.job-title,
+.education-title {
+  font-weight: 700;
+  font-size: 10pt;
+}
+
+.job-company,
+.job-dash,
+.education-spec {
+  font-size: 10pt;
+  font-style: italic;
+}
+
+.job-date,
+.skill-list {
+  color: var(--muted);
+}
+
+.job-date,
+.education-date {
+  margin-top: 2pt;
+  font-family: var(--sans);
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 9pt;
+}
+
+.responsibilities-list {
+  color: var(--muted);
+  list-style-type: "\2014";
+}
+
+.responsibility-item {
+  padding-left: 5pt;
+}
+
+.skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.4mm 3mm;
+  margin-top: 2.4mm;
+}
+
+.skill-list span {
+  padding: 1.1mm 2.2mm;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+}
+
+.language {
+  margin-top: 2mm;
+}
+
+.certificate,
+.language {
+  font-size: 9pt;
+  color: var(--muted);
+}
+
+.certificate-title,
+.language-title {
+  font-weight: 700;
+}
+
+.education-date,
+.education-spec {
+  color: var(--muted);
+}
