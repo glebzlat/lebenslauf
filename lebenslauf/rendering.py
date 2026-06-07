@@ -32,7 +32,7 @@ def render_html(
     user_template.filename = template_filename
 
     base_template = jinja2.Environment(
-        autoescape=jinja2.select_autoescape(("html", "xml")),
+        autoescape=False,
         undefined=jinja2.StrictUndefined,
         trim_blocks=True,
         lstrip_blocks=True,
