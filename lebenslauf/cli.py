@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 import os
-import importlib
+import re
 from pathlib import Path
-from typing import Any
 from select import select
 
-import pydantic
-import yaml
+from jinja2.exceptions import TemplateError as JinjaTemplateError
 
 from selenium.webdriver import Chrome
 from selenium.common.exceptions import WebDriverException
@@ -20,12 +17,13 @@ from selenium.common.exceptions import (
     NoSuchWindowException
 )
 
-from lebenslauf import models
-from lebenslauf.template import Template, TemplateError, resolve_template
+from lebenslauf.template import Template, TemplateError
 from lebenslauf.exceptions import LebenslaufError
-from lebenslauf.resource_manager import ResourceManager
+from lebenslauf.package_resources import PackageResources
+from lebenslauf.runtime_resources import ResourceManager
 from lebenslauf.rendering import print_html, render_html, render_page
 from lebenslauf.browser import BrowserSession
+from lebenslauf.cv import load_resume, process_resume
 
 
 DEFAULT_TEMPLATE = "laconic"
@@ -35,43 +33,27 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    anchor = "lebenslauf"
-
-    base_template_source = (
-        importlib.resources.files(anchor)
-        .joinpath("resources", "template.html")
-        .read_text(encoding="utf-8")
-    )
-
-    pagedjs_ref = (
-        importlib.resources
-        .files(anchor)
-        .joinpath("resources", "vendor", "paged.polyfill.min.js")
-    )
-
     try:
-        template = resolve_template(args.template)
-
         with (
-            ResourceManager(keep_html=args.keep_html) as mgr,
+            ResourceManager(
+                args.template,
+                keep_html=args.keep_html,
+                package_resources=PackageResources("lebenslauf"),
+            ) as mgr,
             BrowserSession(args.browser, headless=not args.repl) as driver
         ):
-            with importlib.resources.as_file(pagedjs_ref) as pagedjs_path:
-                shutil.copy2(pagedjs_path, mgr.directory)
-
             process_template(
-                base_template_source=base_template_source,
-                cv=args.cv_file,
-                template=template,
+                base_template_source=mgr.base_template_source,
+                cv_file=args.cv_file,
+                template=mgr.template,
                 file=mgr
             )
             render_page(driver, mgr, args.timeout)
 
             if args.repl:
                 allowed_continue = repl(
-                    base_template_source,
+                    mgr.base_template_source,
                     args.cv_file,
-                    template,
                     driver,
                     mgr,
                     args.timeout
@@ -86,6 +68,10 @@ def main(argv: list[str] | None = None) -> int:
         pretty_print_error(exc)
         return 1
 
+    except JinjaTemplateError as exc:
+        pretty_print_jinja2_error(exc)
+        return 1
+
     return 0
 
 
@@ -96,6 +82,33 @@ def pretty_print_error(exc: Exception):
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         exc_context = f"{fname}:{exc_tb.tb_lineno}: "
     print(f"{exc_context}{exc}", file=sys.stderr)
+
+
+def pretty_print_jinja2_error(exc: JinjaTemplateError):
+    filename = None
+    lineno = None
+
+    if hasattr(exc, "filename") and getattr(exc, "filename") is not None:
+        filename = str(getattr(exc, "filename"))
+    if hasattr(exc, "lineno") and getattr(exc, "lineno") is not None:
+        lineno = int(getattr(exc, "lineno"))
+
+    tb = exc.__traceback__
+    while tb is not None:
+        frame_filename = tb.tb_frame.f_code.co_filename
+        if frame_filename and frame_filename != "<template>":
+            if not frame_filename.endswith(".py"):
+                filename = frame_filename
+                lineno = tb.tb_lineno
+        tb = tb.tb_next
+
+    if filename is not None and lineno is not None:
+        print(f"{filename}:{lineno}: {exc}", file=sys.stderr)
+        return
+    if filename is not None:
+        print(f"{filename}: {exc}", file=sys.stderr)
+        return
+    print(str(exc), file=sys.stderr)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -149,17 +162,25 @@ def build_parser() -> argparse.ArgumentParser:
 
 def process_template(
     base_template_source: str,
-    cv: Path,
+    cv_file: Path,
     template: Template,
     file: ResourceManager
 ):
-    cv_data = load_resume(cv)
+    cv = load_resume(cv_file)
+    cv_data = process_resume(cv, template.manifest)
     try:
         with open(template.css, "r", encoding="utf-8") as fin:
             css_data = fin.read()
         with open(template.html, "r", encoding="utf-8") as fin:
             html_data = fin.read()
-        html = render_html(base_template_source, html_data, css_data, cv_data)
+        html = render_html(
+            base_template_source,
+            "lebenslauf/resources/template.html",
+            html_data,
+            str(template.html),
+            css_data,
+            cv_data,
+        )
         file.write(html)
     except (FileNotFoundError, IsADirectoryError) as exc:
         raise LebenslaufError(
@@ -167,58 +188,24 @@ def process_template(
         )
 
 
-def load_resume(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        raise LebenslaufError(f"YAML file does not exist: {path}")
-
-    try:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except yaml.YAMLError as exc:
-        raise LebenslaufError(f"invalid YAML in {path}: {exc}") from exc
-
-    if not isinstance(raw, dict):
-        raise LebenslaufError("YAML root must be a dictionary.")
-
-    try:
-        resume = models.Resume.model_validate(raw)
-    except pydantic.ValidationError as exc:
-        raise LebenslaufError(
-            f"invalid resume YAML:\n{format_errors(exc)}"
-        ) from exc
-
-    return resume.model_dump()
-
-
-def format_errors(exc: Any) -> str:
-    lines = []
-    for error in exc.errors():
-        location = ".".join(str(part) for part in error["loc"])
-        message = error["msg"]
-        lines.append(f"- {location}: {message}")
-    return "\n".join(lines)
-
-
 def repl(
     base_template_source: str,
     cv_path: Path,
-    template: Template,
     driver: Chrome,
-    file: ResourceManager,
+    manager: ResourceManager,
     timeout: float
 ) -> bool:
-    mtimes: dict[Path, float] = {
-        cv_path: 0,
-        template.html: 0,
-        template.css: 0,
-        template.meta: 0,
-        **{r: 0 for r in template.resources}
-    }
+    mtimes: dict[Path, float] = {cv_path: 0}
 
     if not sys.stdin.isatty():
         raise LebenslaufError("stdin must be an interactive terminal")
 
     print("Enter anything to exit REPL")
     while True:
+        for path in manager.watch_paths:
+            mtimes.setdefault(path, 0)
+
+        template_reloaded = False
         for path, mtime in mtimes.items():
             if not path.exists():
                 raise LebenslaufError(f"file {path} does not exist")
@@ -228,16 +215,23 @@ def repl(
                 if mtime != 0:
                     print(f"File changed: {path}")
                 try:
+                    if path == manager.template.meta and not template_reloaded:
+                        manager.reload_template()
+                        template_reloaded = True
                     process_template(
                         base_template_source,
                         cv_path,
-                        template,
-                        file
+                        manager.template,
+                        manager
                     )
                     driver.refresh()
                 except (LebenslaufError, TemplateError) as exc:
                     pretty_print_error(exc)
             mtimes[path] = stat.st_mtime
+
+        for path in list(mtimes):
+            if path != cv_path and path not in manager.watch_paths:
+                del mtimes[path]
 
         try:
             driver.execute(Command.GET_CURRENT_URL)

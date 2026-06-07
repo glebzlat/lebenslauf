@@ -21,7 +21,7 @@ class StrictModel(BaseModel):
 
 class Contacts(StrictModel):
     phone: str | None = None
-    mail: str | None = None
+    email: str | None = None
     telegram: str | None = None
     linkedin: str | None = None
     github: str | None = None
@@ -76,30 +76,42 @@ class Resume(StrictModel):
     education: list[Education] = Field(default_factory=list)
 
 
+class Resources(StrictModel):
+    images: Optional[dict[str, Path]] = None
+    fonts: Optional[dict[str, Path]] = None
+
+    @field_validator("images", "fonts", mode="before")
+    @classmethod
+    def _validate_resource_maps(cls, v, info: ValidationInfo):
+        if v is None:
+            return None
+        assert info.context is not None and "base_dir" in info.context
+        base_dir = Path(info.context["base_dir"])
+
+        resolved: dict[str, Path] = {}
+        for key, value in v.items():
+            path = Path(value)
+            if not path.is_absolute():
+                path = base_dir / path
+            if not path.is_file():
+                raise ValueError(
+                    f"file {path} does not exist or is not a file"
+                )
+            resolved[key] = path
+        return resolved
+
+
 class Manifest(StrictModel):
     meta: Path
     html: Path
     css: Path
-    resources: Optional[list[Path]] = None
+    resources: Optional[Resources] = None
 
-    @field_validator("*", mode="before")
+    @field_validator("meta", "html", "css", mode="before")
     @classmethod
     def _validate_fields(cls, v, info: ValidationInfo):
         assert info.context is not None and "base_dir" in info.context
         base_dir = Path(info.context["base_dir"])
-
-        if isinstance(v, list):
-            lst = []
-            for p in v:
-                p = Path(p)
-                if not p.is_absolute():
-                    p = base_dir / p
-                    if not p.is_file():
-                        raise ValueError(
-                            f"file {p} does not exist or is not a file"
-                        )
-                lst.append(p)
-            return lst
 
         path = Path(v)
         if not path.is_absolute():

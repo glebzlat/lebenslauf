@@ -3,8 +3,12 @@
     <h1>{{ person.name }}</h1>
     <p class="role">{{ person.role }}</p>
     <div class="contacts">
-      {% for label, value in person.contacts.items() if value %}
-        <span>{{ value }}</span>
+      {% for contact in person.contacts %}
+        {% if contact.href %}
+          <a class="contact" href={{ contact.href }}>{{ contact.text }}</a>
+        {% else %}
+          <span class="contact">{{ contact.text }}</span>
+        {% endif %}
       {% endfor %}
     </div>
   </header>

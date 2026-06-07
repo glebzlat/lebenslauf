@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-import importlib
 from dataclasses import dataclass
 from pathlib import Path
-from importlib.resources.abc import Traversable
 
 import yaml
 
 from lebenslauf import models
-from .exceptions import LebenslaufError
 
 
 MANIFEST_FILENAME = "manifest.yaml"
@@ -19,8 +16,14 @@ class TemplateError(RuntimeError):
 
 
 @dataclass(frozen=True)
-class Template:
+class TemplateResource:
+    source: Path
+    relative_path: Path
 
+
+@dataclass(frozen=True)
+class Template:
+    base_dir: Path
     manifest: models.Manifest
 
     @staticmethod
@@ -35,7 +38,7 @@ class Template:
             {"meta": MANIFEST_FILENAME, **data},
             context={"base_dir": directory}
         )
-        return Template(manifest)
+        return Template(base_dir=directory, manifest=manifest)
 
     @property
     def html(self) -> Path:
@@ -46,31 +49,36 @@ class Template:
         return self.manifest.css
 
     @property
-    def resources(self) -> tuple[Path, ...]:
-        return tuple(self.manifest.resources or ())
+    def resource_paths(self) -> tuple[Path, ...]:
+        return tuple(resource.source for resource in self.resource_files)
+
+    @property
+    def resource_files(self) -> tuple[TemplateResource, ...]:
+        if self.manifest.resources is None:
+            return ()
+        resources = self.manifest.resources
+        paths: list[TemplateResource] = []
+        if resources.images:
+            paths.extend(
+                self._to_resource(path) for path in resources.images.values()
+            )
+        if resources.fonts:
+            paths.extend(
+                self._to_resource(path) for path in resources.fonts.values()
+            )
+        return tuple(paths)
 
     @property
     def meta(self) -> Path:
         return self.manifest.meta
 
+    @property
+    def watch_paths(self) -> tuple[Path, ...]:
+        return (self.meta, self.html, self.css, *self.resource_paths)
 
-def resolve_template(template: str) -> Template:
-    template_path: Path | Traversable = Path(template)
-    if template_path.is_dir():
-        assert isinstance(template_path, Path)
-        return Template.from_dir(template_path)
-
-    try:
-        template_path = (
-            importlib.resources.files("lebenslauf")
-            .joinpath("resources", "templates", template)
-        )
-        is_dir = template_path.is_dir()
-    except Exception:
-        is_dir = False
-
-    if not is_dir:
-        raise LebenslaufError(f"template {template} not found")
-
-    assert isinstance(template_path, Path)
-    return Template.from_dir(template_path)
+    def _to_resource(self, source: Path) -> TemplateResource:
+        try:
+            relative_path = source.relative_to(self.base_dir)
+        except ValueError:
+            relative_path = Path(source.name)
+        return TemplateResource(source=source, relative_path=relative_path)

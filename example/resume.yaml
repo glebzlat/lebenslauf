@@ -3,7 +3,7 @@ person:
   role: "Senior Software Engineer"
   contacts:
     phone: "+7 777 888 2233"
-    mail: "john@example.com"
+    email: "john@example.com"
     telegram: "@johndoe"
     linkedin: "https://linkedin.com/in/johndoe"
     github: "https://github.com/johndoe"

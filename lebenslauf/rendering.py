@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import time
 from typing import Any
@@ -9,13 +11,15 @@ from selenium.webdriver.common.print_page_options import PrintOptions
 from selenium.common.exceptions import WebDriverException, JavascriptException
 from selenium.webdriver.support.wait import WebDriverWait
 
-from .resource_manager import ResourceManager
+from .runtime_resources import ResourceManager
 from .exceptions import LebenslaufError
 
 
 def render_html(
     base_template_source: str,
+    base_template_filename: str,
     template_source: str,
+    template_filename: str,
     style: str,
     data: dict[str, Any]
 ) -> str:
@@ -25,6 +29,7 @@ def render_html(
         trim_blocks=True,
         lstrip_blocks=True,
     ).from_string(template_source)
+    user_template.filename = template_filename
 
     base_template = jinja2.Environment(
         autoescape=jinja2.select_autoescape(("html", "xml")),
@@ -32,6 +37,7 @@ def render_html(
         trim_blocks=True,
         lstrip_blocks=True,
     ).from_string(base_template_source)
+    base_template.filename = base_template_filename
 
     user_html = user_template.render(**data, resume=data)
     return base_template.render(

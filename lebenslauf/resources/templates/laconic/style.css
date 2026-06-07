@@ -36,6 +36,11 @@ li + li {
   margin-top: .8mm;
 }
 
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
 .header {
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 3mm;
