@@ -42,7 +42,7 @@ class Duration(StrictModel):
 class Experience(StrictModel):
     company: NonEmptyStr
     role: NonEmptyStr
-    duration: Duration
+    duration: Optional[Duration]
     responsibilities: list[NonEmptyStr]
 
 
@@ -64,7 +64,7 @@ class Specialization(StrictModel):
 class Education(StrictModel):
     academy: NonEmptyStr
     specialization: Specialization
-    duration: Duration
+    duration: Optional[Duration]
 
 
 class Resume(StrictModel):

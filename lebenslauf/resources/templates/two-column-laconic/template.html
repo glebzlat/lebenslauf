@@ -66,7 +66,9 @@
               <p class="item-title">{{ item.role }}</p>
               <p class="item-subtitle">{{ item.company }}</p>
             </div>
-            <p class="item-date">{{ item.duration.start }} - {{ item.duration.end }}</p>
+            {% if item.duration %}
+              <p class="item-date">{{ item.duration.start }} - {{ item.duration.end }}</p>
+            {% endif %}
           </div>
           <ul>
             {% for responsibility in item.responsibilities %}
@@ -88,7 +90,9 @@
               <p class="item-title">{{ item.academy }}</p>
               <p class="item-subtitle">{{ item.specialization.type }}: {{ item.specialization.name }}</p>
             </div>
-            <p class="item-date">{{ item.duration.start }} - {{ item.duration.end }}</p>
+            {% if item.duration %}
+              <p class="item-date">{{ item.duration.start }} - {{ item.duration.end }}</p>
+            {% endif %}
           </div>
         </div>
         {% endfor %}

@@ -72,7 +72,9 @@
           <div class="item-head">
             <div>
               <p class="job-title">{{ item.role }}</p>
-              <p class="job-date">{{ item.duration.start }} - {{ item.duration.end }}</p>
+              {% if item.duration %}
+                <p class="job-date">{{ item.duration.start }} - {{ item.duration.end }}</p>
+              {% endif %}
             </div>
             <p class="job-dash">&#8212;</p>
             <p class="job-company">{{ item.company }}</p>
@@ -95,7 +97,9 @@
           <div class="item-head">
             <div>
               <p class="education-title">{{ item.academy }}</p>
-              <p class="education-date">{{ item.duration.start }} - {{ item.duration.end }}</p>
+              {% if item.duration %}
+                <p class="education-date">{{ item.duration.start }} - {{ item.duration.end }}</p>
+              {% endif %}
             </div>
             <p class="education-spec">{{ item.specialization.type }}: {{ item.specialization.name }}</p>
           </div>
