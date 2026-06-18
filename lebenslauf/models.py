@@ -26,6 +26,7 @@ class Contacts(StrictModel):
     linkedin: str | None = None
     github: str | None = None
     gitlab: str | None = None
+    website: str | None = None
 
 
 class Person(StrictModel):

@@ -13,7 +13,6 @@ from lebenslauf.exceptions import LebenslaufError
 
 CONTACT_REWRITE_STRINGS = {
     "phone": {
-        ""
         "*": r"tel:\0"
     },
     "email": {
@@ -34,6 +33,9 @@ CONTACT_REWRITE_STRINGS = {
         "@(.*)": r"https://github.com/\1",
         "*": r"\0"
     },
+    "website": {
+        "*": r"\0"
+    }
 }
 
 
