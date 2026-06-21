@@ -106,3 +106,19 @@ make compile
 ```
 
 `make install` runs both `pip install -r requirements.txt` and `npm install`. `make vendor` rebuilds the local Paged.js browser asset from the pinned npm dependency and copies its license into `lebenslauf/resources/vendor/`.
+
+## Template translation
+
+```bash
+python scripts/extract.py path/to/template/{.,trans.json}
+```
+
+Copy `trans.json` to the file intended for the target language, e.g. `ru.json`,
+add translations, and register the file and the language in the manifest:
+
+```yaml
+languages:
+  original: en
+  translations:
+    ru: ru.json
+```

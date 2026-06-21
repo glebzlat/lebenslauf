@@ -168,11 +168,14 @@ def process_template(
 ):
     cv = load_resume(cv_file)
     cv_data = process_resume(cv, template.manifest)
+    language = cv_data["meta"]["language"]
+
+    if language not in template.supported_languages:
+        print(f"language {language} is not supported by the template")
+
     try:
-        with open(template.css, "r", encoding="utf-8") as fin:
-            css_data = fin.read()
-        with open(template.html, "r", encoding="utf-8") as fin:
-            html_data = fin.read()
+        css_data = template.css.text
+        html_data = template.html.text
         html = render_html(
             base_template_source,
             "lebenslauf/resources/template.html",
@@ -180,6 +183,8 @@ def process_template(
             str(template.html),
             css_data,
             cv_data,
+            template,
+            language
         )
         file.write(html)
     except (FileNotFoundError, IsADirectoryError) as exc:

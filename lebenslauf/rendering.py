@@ -13,6 +13,43 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 from .runtime_resources import ResourceManager
 from .exceptions import LebenslaufError
+from .template import Template
+from .translations import JsonTranslations
+
+
+def _make_env(translations: JsonTranslations) -> jinja2.Environment:
+    env = jinja2.Environment(
+        extensions=["jinja2.ext.i18n"],
+        autoescape=jinja2.select_autoescape(("html", "xml")),
+        undefined=jinja2.StrictUndefined,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    env.install_gettext_translations(translations)
+    return env
+
+
+def _resolve_translations(
+    template: Template,
+    language: str | None
+) -> JsonTranslations:
+    """Pick the right translation file for the requested language.
+
+    - language is None   -> empty catalog (returns msgids as-is)
+    - language is the original language -> empty catalog (nothing to translate)
+    - language is not supported -> empty catalog (unable to translate)
+    - otherwise -> load the file registered in manifest.yaml
+    """
+    if (
+        language is None or
+        language not in template.supported_languages
+    ):
+        # Case when the language is the original language is handled by
+        # supported_languages.
+        return JsonTranslations.load_translations(None)
+    return JsonTranslations.load_translations(
+        template.get_translation(language)
+    )
 
 
 def render_html(
@@ -21,14 +58,14 @@ def render_html(
     template_source: str,
     template_filename: str,
     style: str,
-    data: dict[str, Any]
+    data: dict[str, Any],
+    template: Template,
+    language: str | None = None
 ) -> str:
-    user_template = jinja2.Environment(
-        autoescape=jinja2.select_autoescape(("html", "xml")),
-        undefined=jinja2.StrictUndefined,
-        trim_blocks=True,
-        lstrip_blocks=True,
-    ).from_string(template_source)
+    translations = _resolve_translations(template, language)
+
+    user_env = _make_env(translations)
+    user_template = user_env.from_string(template_source)
     user_template.filename = template_filename
 
     base_template = jinja2.Environment(

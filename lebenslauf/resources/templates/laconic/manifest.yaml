@@ -1,2 +1,7 @@
 html: template.html
 css: style.css
+
+languages:
+  original: en
+  translations:
+    ru: trans/ru.json

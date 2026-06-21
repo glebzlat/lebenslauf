@@ -15,7 +15,7 @@
 
   {% if experience %}
   <section class="section">
-    <h2>Experience</h2>
+    <h2>{{ _("Experience") }}</h2>
     {% for item in experience %}
     <div class="item">
       <div class="item-head">
@@ -39,7 +39,7 @@
 
   {% if skills %}
   <section class="section">
-    <h2>Skills</h2>
+    <h2>{{ _("Skills") }}</h2>
     <div class="skill-list">
       {% for skill in skills %}
       <span>{{ skill }}</span>
@@ -50,7 +50,7 @@
 
   {% if certificates %}
   <section class="section">
-    <h2>Certificates</h2>
+    <h2>{{ _("Certificates") }}</h2>
     {% for item in certificates %}
     <div class="item">
       <p class="item-title">{{ item.name }}</p>
@@ -62,7 +62,7 @@
 
   {% if languages %}
   <section class="section">
-    <h2>Languages</h2>
+    <h2>{{ _("Languages") }}</h2>
     {% for item in languages %}
     <div class="item">
       <div class="item-head">
@@ -76,7 +76,7 @@
 
   {% if education %}
   <section class="section">
-    <h2>Education</h2>
+    <h2>{{ _("Education") }}</h2>
     {% for item in education %}
     <div class="item">
       <div class="item-head">
