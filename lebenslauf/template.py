@@ -6,10 +6,8 @@ from typing import Optional
 
 import yaml
 
-from lebenslauf import models
-
-
-MANIFEST_FILENAME = "manifest.yaml"
+from . import models
+from .constants import MANIFEST_FILENAME
 
 
 class TemplateError(RuntimeError):

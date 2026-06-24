@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import sys
 import os
-import re
 from pathlib import Path
 from select import select
 
@@ -17,16 +16,14 @@ from selenium.common.exceptions import (
     NoSuchWindowException
 )
 
-from lebenslauf.template import Template, TemplateError
-from lebenslauf.exceptions import LebenslaufError
-from lebenslauf.package_resources import PackageResources
-from lebenslauf.runtime_resources import ResourceManager
-from lebenslauf.rendering import print_html, render_html, render_page
-from lebenslauf.browser import BrowserSession
-from lebenslauf.cv import load_resume, process_resume
-
-
-DEFAULT_TEMPLATE = "laconic"
+from .template import Template, TemplateError
+from .exceptions import LebenslaufError
+from .package_resources import PackageResources
+from .runtime_resources import ResourceManager
+from .rendering import print_html, render_html, render_page
+from .browser import BrowserSession
+from .cv import load_resume, process_resume
+from .constants import DEFAULT_TEMPLATE
 
 
 def main(argv: list[str] | None = None) -> int:
